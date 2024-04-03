@@ -7,7 +7,6 @@ from py4j.java_gateway import JavaObject
 from dataproc_sdk.dataproc_sdk_utils.logging import get_user_logger
 from joysticksecuritizatiotl3swp.config import get_params_from_runtime
 
-
 if os.path.isfile(os.path.join(os.path.dirname(__file__), "dataflow.py")):
     from joysticksecuritizatiotl3swp.dataflow import dataproc_dataflow  # noqa: E402
 else:
