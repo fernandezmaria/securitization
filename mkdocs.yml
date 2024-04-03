@@ -1,0 +1,13 @@
+site_name: joysticksecuritizatiotl3swp
+nav:
+    - index.md
+theme:
+    name: material
+    features:
+        - instant
+markdown_extensions:
+    - codehilite
+plugins:
+    - search
+    - mkdocstrings
+

@@ -1,0 +1,12 @@
+{
+    EnvironmentVarsPM {
+      INPUTCLIENTFILE = "/data/sandboxes/test/data/clients.csv"
+      INPUTCLIENTFILE = ${?INPUTCLIENTFILE_OVERWRITE}
+      INPUTCONTRACTFILE = "/data/sandboxes/test/data/contracts.csv"
+      INPUTCONTRACTFILE = ${?INPUTCONTRACTFILE_OVERWRITE}
+      INPUTPRODUCTFILE = "/data/sandboxes/test/data/products.csv"
+      INPUTPRODUCTFILE = ${?INPUTPRODUCTFILE_OVERWRITE}
+      OUTPUTFILE = "/data/sandboxes/test/data/output"
+      OUTPUTFILE = ${?OUTPUTFILE_OVERWRITE}
+  }
+}
