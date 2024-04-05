@@ -19,10 +19,10 @@ from joysticksecuritizatiotl3swp.configurations.constants import CONFIG
 from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.utils.dslb_writer import to_dslb
+from joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
 
 
-class run:  # pragma: no cover
+class SecutiritizationProcess:  # pragma: no cover
     """
     Main class to execute the process
     """
@@ -42,10 +42,10 @@ class run:  # pragma: no cover
         self.spark.conf.set('spark.sql.sources.partitionOverwriteMode', 'dynamic')
 
         # Sandbox writer
-        self.to_dslb = to_dslb(self.logger, self.dataproc)
+        self.dslb_writer = DSLBWriter(self.logger, self.dataproc)
 
         # Load paths
-        self.paths = Paths()
+        self.paths = Paths(self.parameters)
 
         # Load output paths
         if parameters['OUTPUT_MODE'] in ['DEVELOPMENT', 'PRODUCTION']:
@@ -102,17 +102,20 @@ class run:  # pragma: no cover
         self.logger.info('Date Maestro: ' + str(date_maestro))
         # Fecha Catálogos
         date_cat = max(
-            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_rel_cat),
+            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_rel_cat)
+                                                 .filter(F.col('gf_frequency_type') == 'M'),
                                                  date_part_col=self.paths.campo_date)[1])
         self.logger.info('Date Taxonomy: ' + str(date_cat))
         # Fecha Rating Externo
         date_ext_rating = max(
-            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_ext_rating),
+            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_ext_rating)
+                                                 .filter(F.col('g_entific_id') == 'HO'),
                                                  date_part_col=self.paths.campo_date)[1])
         self.logger.info('Date Rating Externo: ' + str(date_ext_rating))
         # Fecha Atributos ratings de clientes
         date_client_rat_attr = max(
-            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_cust_rating),
+            PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.path_cust_rating)
+                                                 .filter(F.col('g_entific_id') == 'ES'),
                                                  date_part_col=self.paths.campo_date)[1])
         self.logger.info('Date Atributos ratings de clientes: ' + str(date_client_rat_attr))
         # Fecha Acreditadas
@@ -124,8 +127,12 @@ class run:  # pragma: no cover
         # Perímetro de Oficinas: BBVA SA + IBF
         branches = Branches(self.dataproc, '/data', types_entity=['Global Finance'])
         branches_df = branches.getBranches()
-        branches_df = branches_df.filter(F.col('entity_id') == '0182'). \
-            drop_duplicates(['branch_id', 'entity_id'])
+        branches_df = (branches_df.filter(F.col('entity_id') == '0182')
+                       .withColumn('rn',
+                                   F.row_number().over(
+                                       W.partitionBy('branch_id', 'entity_id').orderBy(F.desc('entity_product'))))
+                       .filter(F.col('rn') == 1)
+                       .drop('rn'))
 
         # Datos de Clan a nivel oficina
         product_all = Products(product_subtype=Products().getProductsList('GF'))
@@ -155,10 +162,10 @@ class run:  # pragma: no cover
             join(branches_df.select('branch_id', 'entity_product'), on=['branch_id'], how='inner')
 
         contract_relations = operations.get_deals_global_contract_relations(saldos_oficina)
-        self.to_dslb.df_to_sb(contract_relations, f'{self.sandbox_path}auxiliar',
-                              'contract_relations_securizations', 'parquet', 'overwrite', 10)
+        self.dslb_writer.write_df_to_sb(contract_relations, f'{self.sandbox_path}auxiliar',
+                                        'contract_relations_securitizations', 'parquet', 'overwrite', 10)
         contract_relations = self.dataproc.read() \
-            .parquet(f'{self.sandbox_path}auxiliar/contract_relations_securizations')
+            .parquet(f'{self.sandbox_path}auxiliar/contract_relations_securitizations')
         if contract_relations.count() == 0:
             raise Exception('contract_relations empty')
 
@@ -232,13 +239,17 @@ class run:  # pragma: no cover
             .fillna(0)
 
         # Convertimos la escala de ratings a numérica con el diccionario
-        mapping_expr = F.create_map([F.lit(x) for x in chain(*rating_dict.items())])
+        mapping_expr = F.create_map(*[F.lit(x) for x in chain(*rating_dict.items())])
         ops_clan = ops_clan.withColumn('ma_expanded_master_scale_number',
                                        mapping_expr.getItem(F.trim(F.col('lmscl_reg_internal_ratg_type'))))
-        ops_clan = ops_clan. \
-            join(ifrs9.select('customer_id', 'watch_list_clasification_type').
-                 drop_duplicates(subset=['customer_id']),
-                 on='customer_id', how='left').fillna({'watch_list_clasification_type': 0})
+        ops_clan = (
+            ops_clan.join(ifrs9.select('customer_id', 'watch_list_clasification_type')
+                          .withColumn('rn',
+                                      F.row_number().over(
+                                          W.partitionBy('customer_id').orderBy(
+                                              F.desc('watch_list_clasification_type'))))
+                          .filter('rn==1').drop('rn'),
+                          on='customer_id', how='left').fillna({'watch_list_clasification_type': 0}))
 
         # tomamos los valores de insured type a nivel expediente y lo aplicamos a todos los tramos de cada operación
         insured_type = operations.getOperationsProperties('deals')
@@ -270,7 +281,7 @@ class run:  # pragma: no cover
             F.col('gf_cutoff_date') == date_maestro)
 
         mcyg = Maestro(self.logger, self.dataproc)
-        maestro = mcyg.mcygdata(cli, cli_rel, members, hold_group)
+        maestro = mcyg.read_mcyg_data(cli, cli_rel, members, hold_group)
 
         # Como no tenemos el customer_id único, vamos a entender que al filtar
         # operaciones de BBVA SA, nos etsamos quedando con clientes de BBVA SA
@@ -300,6 +311,7 @@ class run:  # pragma: no cover
         # Relacionar la actividad holding con el subsector de asset allocation y
         # con el sector
         rel_catalogos = self.dataproc.read().parquet(self.paths.path_rel_cat) \
+            .filter(F.col('gf_frequency_type') == 'M') \
             .filter(F.col(self.paths.campo_date) == date_cat)
         rel_actividad_aa = rel_catalogos.where((F.col('gf_initial_catalog_id') == 'C039') &
                                                (F.col('gf_final_catalog_id') == 'C164')). \
@@ -313,7 +325,9 @@ class run:  # pragma: no cover
             withColumnRenamed('gf_initial_catalog_val_id', 'gf_holding_activity_sector_id'). \
             withColumnRenamed('gf_final_catalog_val_id', 'g_asset_class_id'). \
             drop_duplicates()
-        cat = self.dataproc.read().parquet(self.paths.path_cat).filter(F.col(self.paths.campo_date) == date_cat)
+        cat = (self.dataproc.read().parquet(self.paths.path_cat)
+               .filter(F.col('gf_frequency_type') == 'M')
+               .filter(F.col(self.paths.campo_date) == date_cat))
         cat_subsector = cat.where(F.col('g_catalog_id') == 'C164'). \
             select('gf_catalog_val_id', 'gf_catlg_field_value_en_desc'). \
             drop_duplicates(). \
@@ -361,9 +375,11 @@ class run:  # pragma: no cover
 
         # Tomamos el rating externo de s&p
         rating_sp = (self.dataproc.read().parquet(self.paths.path_ext_rating)
+                     .filter(F.col('g_entific_id') == 'HO')
                      .filter(F.col(self.paths.campo_date) == date_ext_rating))
-        rating_sp = rating_sp.drop_duplicates(subset=['g_golden_customer_id']). \
-            select('g_golden_customer_id', 'g_sp_lt_rating_fc_type')
+        rating_sp = (rating_sp.withColumn('rn', F.row_number().over(W.partitionBy('g_golden_customer_id'))
+                                          .orderBy(F.desc('g_sp_lt_rating_fc_type')))
+                     .filter('rn==1').drop('rn').select('g_golden_customer_id', 'g_sp_lt_rating_fc_type'))
         # Unimos a cada grupo por su cliente matriz y pegamos a la base de clan por el id de grupo
         rating_sp_matriz = grupo_cli_182_matriz.drop('g_customer_id'). \
             join(rating_sp, on=['g_golden_customer_id'], how='inner')
@@ -443,9 +459,9 @@ class run:  # pragma: no cover
                  'gf_ma_mitigation_rc_amount', 'gf_m5_total_el_amount', 'gf_ma_tot_expected_loss_amount')
         self.logger.info("Main.execute_process ended. Output count = " + str(cubo_aud.count()))
 
-        # Write using to_dslb
-        self.to_dslb.df_to_sb(cubo_aud, f'{self.sandbox_path}mrr/mrr_csv',
-                              'securitization_model_portfolio_' + date_clan + '.csv', 'csv', 'overwrite')
-        self.to_dslb.df_to_sb(cubo_aud, f'{self.sandbox_path}mrr', 'joystick_mrr',
-                              'parquet', 'overwrite', partition_cols=['clan_date'])
+        # Write using DSLBWriter
+        self.dslb_writer.write_df_to_sb(cubo_aud, f'{self.sandbox_path}mrr/mrr_csv',
+                                        'securitization_model_portfolio_' + date_clan + '.csv', 'csv', 'overwrite')
+        self.dslb_writer.write_df_to_sb(cubo_aud, f'{self.sandbox_path}mrr', 'joystick_mrr', 'parquet', 'overwrite',
+                                        partition_cols=['clan_date'])
         return 0

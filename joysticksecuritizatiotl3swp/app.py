@@ -3,7 +3,7 @@ from typing import Dict
 from dataproc_sdk.dataproc_sdk_datiopysparksession import datiopysparksession
 from dataproc_sdk.dataproc_sdk_utils.logging import get_user_logger
 
-from joysticksecuritizatiotl3swp.executor.main import run as prun
+from joysticksecuritizatiotl3swp.executor.main import SecutiritizationProcess
 
 
 class DataprocExperiment:
@@ -39,10 +39,10 @@ class DataprocExperiment:
         ret_code = 0
 
         try:
-            prun(self.logger, spark, dataproc, parameters).execute_process()
+            SecutiritizationProcess(self.logger, spark, dataproc, parameters).execute_process()
 
         except Exception as exception:
-            ret_code = -1
             self.logger.error("Exception: %s" % exception)
+            raise exception
 
         return ret_code

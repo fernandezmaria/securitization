@@ -47,7 +47,7 @@ class Maestro:  # pragma: no cover
                              'g_cib_segment_id',
                              'gf_crm_group_id']
 
-    def mcygdata(self, cli, cli_rel, members, hold_grupo):
+    def read_mcyg_data(self, cli, cli_rel, members, hold_grupo):
         '''
         This method generates MCyG data for Internal Data Process
         Parameters:
