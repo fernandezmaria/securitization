@@ -15,7 +15,7 @@ from rubik.utils.partitions import PartitionsUtils
 
 from joysticksecuritizatiotl3swp.configurations.catalogues import get_countries_iso_name_table
 from joysticksecuritizatiotl3swp.configurations.catalogues import rating_dict
-from joysticksecuritizatiotl3swp.configurations.constants import CONFIG
+from joysticksecuritizatiotl3swp.configurations.constants import Constants
 from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
@@ -47,9 +47,12 @@ class SecutiritizationProcess:  # pragma: no cover
         # Load paths
         self.paths = Paths(self.parameters)
 
+        # Load constants
+        self.constants = Constants(self.parameters)
+
         # Load output paths
         if parameters['OUTPUT_MODE'] in ['DEVELOPMENT', 'PRODUCTION']:
-            self.sandbox_path = CONFIG[parameters['OUTPUT_MODE']]['SANDBOX_PATH']
+            self.sandbox_path = self.constants.CONFIG[parameters['OUTPUT_MODE']]['SANDBOX_PATH']
         else:
             raise ValueError('Invalid output mode! Please use DEVELOPMENT or PRODUCTION.')
 
