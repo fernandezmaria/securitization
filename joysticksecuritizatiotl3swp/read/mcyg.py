@@ -60,7 +60,6 @@ class Maestro:  # pragma: no cover
         self.logger.info("Maestro.mcygdata")
         mapping_expr = F.create_map([F.lit(x) for x in chain(*tier_dict.items())])
         mapping_expr2 = F.create_map([F.lit(x) for x in chain(*segment_dict.items())])
-        get_basename_udf = F.udf(lambda s: s.strip())
 
         cli = cli.selectExpr(self.c_cli).dropDuplicates()
 
@@ -88,8 +87,8 @@ class Maestro:  # pragma: no cover
 
         cli_final = cli_final.drop('g_hier_level_type', 'gf_main_relation_group_type')
 
-        mcygdata_df = (cli_final.withColumn('gf_group_name', get_basename_udf(F.col('gf_group_name')))
-                       .withColumn('gf_group_full_desc', get_basename_udf(F.col('gf_group_full_desc')))
+        mcygdata_df = (cli_final.withColumn('gf_group_name', F.trim(F.col('gf_group_name')))
+                       .withColumn('gf_group_full_desc', F.trim(F.col('gf_group_full_desc')))
                        .withColumn('gf_tier_id_desc', mapping_expr.getItem(F.col('gf_tier_id')))
                        .withColumn('g_cib_segment_desc', mapping_expr2.getItem(F.col('g_cib_segment_id')))
                        .withColumn('customer_id', F.substring('g_customer_id', 7, 9)))
@@ -110,7 +109,6 @@ class Maestro:  # pragma: no cover
         """
         date = datetime.datetime.strptime(date_maestro, "%Y%m%d").strftime("%Y-%m-%d")
         srvc = CustomersService(dataproc=self.dataproc)
-        # Nota: al añadir MX habrá que modificar la siguiente llamada
-        customers_rel = srvc.get_customer_attrs(from_date=date, to_date=date, countries=['ES']) \
+        customers_rel = srvc.get_customer_attrs(from_date=date, to_date=date, countries=['ES', 'MX']) \
             .select('g_customer_id', 'g_golden_customer_id').distinct()
         return customers_rel

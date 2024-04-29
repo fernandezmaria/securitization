@@ -9,14 +9,14 @@ from pyspark.sql.window import Window as W
 from rubik.load.branches import Branches
 from rubik.load.operations import Operations
 from rubik.load.products import Products
-from rubik.load.ratings import Ratings
-from rubik.load.risk_operations import RiskOperations
 from rubik.utils.partitions import PartitionsUtils
 
 from joysticksecuritizatiotl3swp.configurations.catalogues import get_countries_iso_name_table
 from joysticksecuritizatiotl3swp.configurations.catalogues import rating_dict
 from joysticksecuritizatiotl3swp.configurations.constants import Constants
-from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital
+from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital, IFRS9
+from joysticksecuritizatiotl3swp.read.entity_cat import EntityCatalogue
+from joysticksecuritizatiotl3swp.read.fx import FX
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
 from joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
@@ -73,11 +73,11 @@ class SecutiritizationProcess:  # pragma: no cover
         # FECHA DE LAS TABLAS DE REGULATORIO Y ECONÓMICO: Última partición común disponible
         econ = self.dataproc.read().parquet(self.paths.config_economic_capital['path'])
         _, date_econ = (PartitionsUtils
-                        .get_newest_date_data(data=econ.filter(F.col('g_entific_id').isin(['ES'])),
+                        .get_newest_date_data(data=econ.filter(F.col('g_entific_id').isin(['ES', 'MX'])),
                                               date_part_col=self.paths.config_economic_capital['column_date']))
         regl = self.dataproc.read().parquet(self.paths.config_reg_capital['path'])
         _, date_regl = (PartitionsUtils
-                        .get_newest_date_data(data=regl.filter(F.col('g_entific_id').isin(['ES'])),
+                        .get_newest_date_data(data=regl.filter(F.col('g_entific_id').isin(['ES', 'MX'])),
                                               date_part_col=self.paths.config_reg_capital['column_date']))
         date_reg_econ_capital = min(set(date_econ).union(set(date_regl)))
         self.logger.info('Date REGULATORIO Y ECONÓMICO: ' + str(date_reg_econ_capital))
@@ -95,7 +95,7 @@ class SecutiritizationProcess:  # pragma: no cover
         date_ifrs9 = max(
             PartitionsUtils.get_newest_date_data(data=self.dataproc.read().parquet(self.paths.config_ifrs9['path'])
                                                  .filter(F.col('provision_type') == 'N')
-                                                 .filter(F.col('entific_id') == 'ES'),
+                                                 .filter(F.col('entific_id').isin('ES', 'MX')),
                                                  date_part_col=self.paths.config_ifrs9['column_date'])[1])
         self.logger.info('Date IFRS9: ' + str(date_ifrs9))
         # Fecha Maestro
@@ -130,7 +130,7 @@ class SecutiritizationProcess:  # pragma: no cover
         # Perímetro de Oficinas: BBVA SA + IBF
         branches = Branches(self.dataproc, '/data', types_entity=['Global Finance'])
         branches_df = branches.getBranches()
-        branches_df = (branches_df.filter(F.col('entity_id') == '0182')
+        branches_df = (branches_df.filter(F.col('entity_id').isin('0182', '9016'))
                        .withColumn('rn',
                                    F.row_number().over(
                                        W.partitionBy('branch_id', 'entity_id').orderBy(F.desc('entity_product'))))
@@ -144,6 +144,32 @@ class SecutiritizationProcess:  # pragma: no cover
 
         deals_op = operations.deals_operations(level='oficina', status=None)
         deals_bal = operations.balance_operations(levels_agg=None, status=None)
+
+        # Añadir código de cliente y entidad globales
+        deals_cust = (
+            operations._deals_all_columns.filter(F.col("main_owner_type") == "SI")
+            .filter(F.col("branch_role_type").isin("Participating Lender"))
+            .withColumn(
+                "rn",
+                F.row_number().over(
+                    W.partitionBy(
+                        "delta_file_id", "delta_file_band_id", "branch_id", "entity_id"
+                    ).orderBy("total_nominal_eur_amount")
+                ),
+            )
+            .filter("rn==1")
+            .drop("rn")
+            .select(
+                "delta_file_id",
+                "delta_file_band_id",
+                "entity_id",
+                "branch_id",
+                "g_customer_id",
+                "g_entity_id",
+            )
+            .distinct()
+        )
+
         saldos_oficina = deals_op.select('delta_file_id', 'delta_file_band_id',
                                          'project_country_id',
                                          'file_product_desc',
@@ -158,11 +184,15 @@ class SecutiritizationProcess:  # pragma: no cover
                                          'borrower_country_id',
                                          'entity_id', 'branch_id',
                                          'operation_reference_id', 'page_id',
+                                         'project_id',
                                          'deal_purpose_type', 'project_sector_desc'). \
             join(deals_bal, on=['delta_file_id', 'delta_file_band_id',
                                 "entity_id", "branch_id", 'currency_id'],
                  how='left'). \
-            join(branches_df.select('branch_id', 'entity_product'), on=['branch_id'], how='inner')
+            join(branches_df.select('branch_id', 'entity_product'), on=['branch_id'], how='inner') \
+            .join(deals_cust,
+                  on=["delta_file_id", "delta_file_band_id", "entity_id", "branch_id"],
+                  how="left")
 
         contract_relations = operations.get_deals_global_contract_relations(saldos_oficina)
         self.dslb_writer.write_df_to_sb(contract_relations, f'{self.sandbox_path}auxiliar',
@@ -171,88 +201,41 @@ class SecutiritizationProcess:  # pragma: no cover
             .parquet(f'{self.sandbox_path}auxiliar/contract_relations_securitizations')
         if contract_relations.count() == 0:
             raise Exception('contract_relations empty')
+        # FX
+        fx = FX(self.logger, self.dataproc)
 
         # Información de capital regulatorio y económico
-        rtg_score_letter_rel = Ratings('/data', self.spark, self.dataproc).get_score_letter_relations()
-        risk_operations = RiskOperations(self.dataproc, '/data', date_reg_econ_capital)
-        econ_capital = risk_operations.get_econ_capital_info('ES')
-        regl_capital = risk_operations.get_regly_info_hold('ES')
-        econ_reglty_capital = EconRegltyCapital(self.logger, econ_capital, regl_capital, contract_relations)
+        econ_reglty_capital = EconRegltyCapital(self.logger, self.spark, self.dataproc, date_reg_econ_capital, fx,
+                                                contract_relations)
         econ_capital_df, regl_capital_df = econ_reglty_capital.build_econ_reglty_capital()
-        # Se calculan máximos en lugar de sumas como en el proceso mensual
-        econ_capital_df = econ_capital_df \
-            .groupBy('delta_file_id', 'delta_file_band_id', 'branch_id') \
-            .agg(F.max('gf_economic_capital_ead_amount').alias('gf_economic_capital_ead_amount'),
-                 F.max('gf_ek_mitigated_el_adj_amount').alias('gf_ek_mitigated_el_adj_amount'),
-                 F.max('gf_ek_adj_mit_dvrsfn_amount').alias('gf_ek_adj_mit_dvrsfn_amount'),
-                 (F.sum(F.col('gf_ek_aftr_mit_wght_pd_per') * F.col('gf_economic_capital_ead_amount')) /
-                  F.sum('gf_economic_capital_ead_amount')).alias('pd_m5_mitig_per')
-                 ) \
-            .join(rtg_score_letter_rel.selectExpr('gf_from_prblty_dflt_per', 'gf_to_prblty_dflt_per',
-                                                  'g_smscl_internal_ratg_type AS  smscl_econ_internal_ratg_type',
-                                                  'g_lmscl_internal_ratg_type AS lmscl_econ_internal_ratg_type'),
-                  on=((F.col('gf_from_prblty_dflt_per') <= 100 * F.col('pd_m5_mitig_per')) &
-                      (100 * F.col('pd_m5_mitig_per') < F.col('gf_to_prblty_dflt_per'))), how='left') \
-            .drop('gf_from_prblty_dflt_per', 'gf_to_prblty_dflt_per')
-        reg_capital_df = regl_capital_df \
-            .groupBy('delta_file_id', 'delta_file_band_id', 'branch_id') \
-            .agg(F.max('gf_rce_amd_exposure_amount').alias('gf_rce_amd_exposure_amount'),
-                 F.max('gf_rce_adm_mit_captl_amount').alias('gf_rce_adm_mit_captl_amount'),
-                 (F.sum(F.col('gf_aftr_mit_wght_pd_per') * F.col('gf_rce_amd_exposure_amount')) /
-                  F.sum('gf_rce_amd_exposure_amount')).alias('pd_ma_mitig_per'),
-                 F.max('gf_rce_amd_appl_calc_lgd_per').alias('gf_rce_amd_appl_calc_lgd_per'),
-                 F.max('gf_rce_adm_mit_el_amount').alias('gf_rce_adm_mit_el_amount')
-                 ) \
-            .join(rtg_score_letter_rel.selectExpr('gf_from_prblty_dflt_per', 'gf_to_prblty_dflt_per',
-                                                  'g_smscl_internal_ratg_type AS  smscl_reg_internal_ratg_type',
-                                                  'g_lmscl_internal_ratg_type AS lmscl_reg_internal_ratg_type'),
-                  on=((F.col('gf_from_prblty_dflt_per') <= 100 * F.col('pd_ma_mitig_per')) &
-                      (100 * F.col('pd_ma_mitig_per') < F.col('gf_to_prblty_dflt_per'))), how='left') \
-            .drop('gf_from_prblty_dflt_per', 'gf_to_prblty_dflt_per')
 
         # Info de IFRS9
-        ifrs9 = Ratings('/data', self.spark, self.dataproc, date_ifrs9).get_ifrs9_rating(provision_type='N',
-                                                                                         entific_id='ES')
-        provisiones_df = contract_relations \
-            .withColumn('entific_id', F.substring('g_contract_id', 0, 2)) \
-            .withColumn('contract_id', F.substring('g_contract_id', 11, 26)) \
-            .join(ifrs9.select(F.substring('branch_id', 3, 4).alias('branch_id'),
-                               'contract_id', 'entific_id', 'final_stage_type', 'final_provision_amount'),
-                  on=['entific_id', 'contract_id', 'branch_id'],
-                  how='inner') \
-            .withColumn('final_provision_amount', F.when(F.col('final_provision_amount') == 999999999999999.99,
-                                                         0).otherwise(F.col('final_provision_amount'))) \
-            .groupBy('delta_file_id', 'delta_file_band_id', 'branch_id') \
-            .agg(F.sum('final_provision_amount').alias('final_provision_amount'),
-                 F.max('final_stage_type').alias('final_stage_type')
-                 )
+        ifrs9_obj = IFRS9(self.logger, self.spark, self.dataproc, date_ifrs9, fx, contract_relations)
+        provisiones_df = ifrs9_obj.build_ifrs9()
         unified_risk_df = econ_capital_df \
-            .join(reg_capital_df, on=['delta_file_id', 'delta_file_band_id', 'branch_id'], how='left') \
+            .join(regl_capital_df, on=['delta_file_id', 'delta_file_band_id', 'branch_id'], how='left') \
             .join(provisiones_df, on=['delta_file_id', 'delta_file_band_id', 'branch_id'], how='left')
 
         # Base de Operaciones de Clan que nos vamos a quedar con los campos requeridos
         # y los unimos con los de regulatorio, económico e IFRS9
-        ops_clan = saldos_oficina.filter(F.col('bbva_commitment_amount') > 0). \
-            join(unified_risk_df, on=['delta_file_id', 'delta_file_band_id', 'branch_id'],
-                 how='left') \
+        ops_clan = (
+            saldos_oficina.filter(F.col('bbva_commitment_amount') > 0)
+            .join(unified_risk_df, on=['delta_file_id', 'delta_file_band_id', 'branch_id'],
+                  how='left')
             .fillna({'smscl_econ_internal_ratg_type': 'No Rating',
                      'lmscl_econ_internal_ratg_type': 'No Rating',
                      'smscl_reg_internal_ratg_type': 'No Rating',
-                     'lmscl_reg_internal_ratg_type': 'No Rating'}) \
-            .fillna(0)
+                     'lmscl_reg_internal_ratg_type': 'No Rating'})
+            .fillna(0))
 
         # Convertimos la escala de ratings a numérica con el diccionario
         mapping_expr = F.create_map(*[F.lit(x) for x in chain(*rating_dict.items())])
         ops_clan = ops_clan.withColumn('ma_expanded_master_scale_number',
                                        mapping_expr.getItem(F.trim(F.col('lmscl_reg_internal_ratg_type'))))
-        ops_clan = (
-            ops_clan.join(ifrs9.select('customer_id', 'watch_list_clasification_type')
-                          .withColumn('rn',
-                                      F.row_number().over(
-                                          W.partitionBy('customer_id').orderBy(
-                                              F.desc('watch_list_clasification_type'))))
-                          .filter('rn==1').drop('rn'),
-                          on='customer_id', how='left').fillna({'watch_list_clasification_type': 0}))
+        ops_clan = ops_clan. \
+            join(ifrs9_obj.get_cust_watchlist(),
+                 on='g_customer_id', how='left') \
+            .fillna({'watch_list_clasification_type': 0})
 
         # tomamos los valores de insured type a nivel expediente y lo aplicamos a todos los tramos de cada operación
         insured_type = operations.getOperationsProperties('deals')
@@ -269,7 +252,8 @@ class SecutiritizationProcess:  # pragma: no cover
         ops_clan = ops_clan. \
             join(insured_type, on=['delta_file_id'], how='left'). \
             join(insured_type_tramo_cero, on=['delta_file_id'], how='left'). \
-            withColumn('insured_type', F.coalesce('insured_type', 'insured_type_cabecera', 'insured_type_tramo_cero')). \
+            withColumn('insured_type',
+                       F.coalesce('insured_type', 'insured_type_cabecera', 'insured_type_tramo_cero')). \
             drop('insured_type_cabecera', 'insured_type_tramo_cero')
 
         # MAESTRO
@@ -284,21 +268,16 @@ class SecutiritizationProcess:  # pragma: no cover
             F.col('gf_cutoff_date') == date_maestro)
 
         mcyg = Maestro(self.logger, self.dataproc)
-        maestro = mcyg.read_mcyg_data(cli, cli_rel, members, hold_group)
+        maestro_grupos = mcyg.read_mcyg_data(cli, cli_rel, members, hold_group)
 
-        # Como no tenemos el customer_id único, vamos a entender que al filtar
-        # operaciones de BBVA SA, nos etsamos quedando con clientes de BBVA SA
-        # Filtramos la relación de grupo por entidad para evitar las duplicidades de customer_id
-        grupo_cli_182 = maestro.where(F.col('cust_entity') == '0182')
-        ops_clan = ops_clan.join(grupo_cli_182.select('customer_id', 'g_holding_group_id'),
-                                 on=['customer_id'], how='left')
+        ops_clan = ops_clan.join(maestro_grupos.select('g_customer_id', 'g_holding_group_id'),
+                                 on=['g_customer_id'], how='left')
         # Tabla de grupos para pegar el país de grupo
         ops_clan = ops_clan. \
             join(hold_group.select('g_holding_group_id', 'g_country_id', 'g_origin_country_id').
                  withColumnRenamed('g_country_id', 'group_country').
                  withColumnRenamed('g_origin_country_id', 'group_country2'),
                  on=['g_holding_group_id'], how='left')
-
         clientes = cli. \
             select('g_golden_customer_id',
                    'gf_country_ifo_id',
@@ -307,8 +286,7 @@ class SecutiritizationProcess:  # pragma: no cover
             .join(mcyg.get_cust_id_relation(date_maestro.replace('-', '')),
                   on='g_golden_customer_id', how='left') \
             .drop('g_golden_customer_id')
-        ops_clan = ops_clan.withColumn('g_customer_id', F.concat(F.lit('ES0182'), F.col('customer_id'))). \
-            join(clientes, on=['g_customer_id'], how='left')
+        ops_clan = ops_clan.join(clientes, on=['g_customer_id'], how='left')
 
         # Proceso para pasar de la actividad holding a sector+subsector
         # Relacionar la actividad holding con el subsector de asset allocation y
@@ -370,40 +348,42 @@ class SecutiritizationProcess:  # pragma: no cover
 
         # RATING S&P DE LA MATRIZ
         # Tomamos de maestro la relación grupo - matriz
-        grupo_cli_182_matriz = grupo_cli_182.where(F.col('gf_prtcpt_gr_header_type') == 'S'). \
-            select('g_holding_group_id', 'g_customer_id')
-        grupo_cli_182_matriz = grupo_cli_182_matriz. \
-            join(cli_rel.select('g_golden_customer_id', 'g_customer_id'),
-                 on=['g_customer_id'], how='left')
+        grupo_cli_matriz = maestro_grupos.where(F.col('gf_prtcpt_gr_header_type') == 'S') \
+            .select('g_holding_group_id', 'g_customer_id') \
+            .distinct() \
+            .join(cli_rel.select('g_golden_customer_id', 'g_customer_id'),
+                  on=['g_customer_id'], how='left')
 
         # Tomamos el rating externo de s&p
         rating_sp = (self.dataproc.read().parquet(self.paths.path_ext_rating)
                      .filter(F.col('g_entific_id') == 'HO')
                      .filter(F.col(self.paths.campo_date) == date_ext_rating))
-        rating_sp = (rating_sp.withColumn('rn', F.row_number().over(W.partitionBy('g_golden_customer_id'))
-                                          .orderBy(F.desc('g_sp_lt_rating_fc_type')))
+        rating_sp = (rating_sp.withColumn('rn', F.row_number().over(W.partitionBy('g_golden_customer_id')
+                                                                    .orderBy(F.desc('g_sp_lt_rating_fc_type'))))
                      .filter('rn==1').drop('rn').select('g_golden_customer_id', 'g_sp_lt_rating_fc_type'))
         # Unimos a cada grupo por su cliente matriz y pegamos a la base de clan por el id de grupo
-        rating_sp_matriz = grupo_cli_182_matriz.drop('g_customer_id'). \
-            join(rating_sp, on=['g_golden_customer_id'], how='inner')
-        ops_clan = ops_clan.join(rating_sp_matriz.drop('g_golden_customer_id'),
-                                 on=['g_holding_group_id'], how='left')
+        rating_sp_matriz = grupo_cli_matriz.drop('g_customer_id').distinct() \
+            .join(rating_sp, on=['g_golden_customer_id'], how='inner')
+        ops_clan = ops_clan.join(rating_sp_matriz.drop('g_golden_customer_id'), on=['g_holding_group_id'], how='left')
         # Añadimos información de acreditadas y atributos de clientes
         # Esta lectura debería dar unicidad de cliente, pero hay alguna errata. Se elimina duplicidad
         t_kctk_accredited = self.dataproc.read().parquet(self.paths.path_acreditadas).filter(
             F.col(self.paths.campo_date) == date_accredited) \
             .withColumn('rn',
-                        F.row_number().over(W.partitionBy('gf_participant_id')
+                        F.row_number().over(W.partitionBy('gf_participant_id', 'gf_pf_acct_fin_ent_id')
                                             .orderBy(F.desc('gf_pf_ratg_date'),
                                                      F.desc('gf_contract_register_date')))) \
             .filter('rn==1') \
-            .selectExpr('gf_participant_id AS customer_id',
-                        'gf_capital_adjustment_desc',
-                        'gf_pf_project_const_type',
-                        'gf_sbprfl_mrch_risk_ind_type',
-                        'gf_pf_current_ratg_id',
-                        'gf_pf_score_ind_desc',
-                        'gf_pf_final_lgd_amount')
+            .select(
+            F.when(F.col('gf_pf_acct_fin_ent_id') == '0182', F.concat(F.lit('ES0182'), F.col('gf_participant_id')))
+            .when(F.col('gf_pf_acct_fin_ent_id') == '9016', F.concat(F.lit('MX0074'), F.col('gf_participant_id')))
+            .alias('g_customer_id'),
+            'gf_capital_adjustment_desc',
+            'gf_pf_project_const_type',
+            'gf_sbprfl_mrch_risk_ind_type',
+            'gf_pf_current_ratg_id',
+            'gf_pf_score_ind_desc',
+            'gf_pf_final_lgd_amount')
 
         t_kctk_cust_rating_atrb = self.dataproc.read().parquet(self.paths.path_cust_rating).filter(
             F.col(self.paths.campo_date) == date_client_rat_attr) \
@@ -414,15 +394,30 @@ class SecutiritizationProcess:  # pragma: no cover
 
         ops_clan = ops_clan \
             .join(t_kctk_accredited,
-                  how='left', on='customer_id') \
+                  how='left', on='g_customer_id') \
             .join(t_kctk_cust_rating_atrb,
                   how='left', on='g_customer_id')
 
+        # Add entity description
+        entities = (
+            EntityCatalogue(self.logger, self.dataproc)
+            .get_entities_catalog()
+            .selectExpr("g_holding_entity_id AS entity_id", "gf_entity_desc AS banking_entity_desc")
+        )
+        ops_clan = ops_clan.join(
+            entities,
+            on="entity_id",
+            how="left",
+        )
+
         cubo_aud = ops_clan. \
-            select('delta_file_id', 'delta_file_band_id', 'branch_id', 'project_country_desc', 'financial_product_desc',
-                   'project_sector_desc', 'deal_purpose_type', 'seniority_name', 'insured_type', 'currency_id',
-                   'deal_signing_date', 'expiration_date', 'financial_product_class_desc', 'customer_id',
-                   'customer_country', 'g_holding_group_id', 'group_country_desc',
+            select('delta_file_id', 'delta_file_band_id', 'branch_id', 'project_id', 'project_country_desc',
+                   'financial_product_desc', 'project_sector_desc', 'deal_purpose_type', 'seniority_name',
+                   'insured_type', 'currency_id', 'deal_signing_date', 'expiration_date',
+                   'financial_product_class_desc', 'customer_id', 'g_customer_id', 'customer_country',
+                   'g_holding_group_id', 'group_country_desc',
+                   F.col("entity_id").alias("banking_entity_id"),
+                   F.col("banking_entity_desc"),
                    F.col('lmscl_econ_internal_ratg_type').alias('m5_expanded_master_scale_id'),
                    F.col('lmscl_reg_internal_ratg_type').alias('gf_ma_expanded_master_scale_id'),
                    'ma_expanded_master_scale_number', 'pd_ma_mitig_per',
