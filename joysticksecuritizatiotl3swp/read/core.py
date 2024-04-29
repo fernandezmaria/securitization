@@ -32,8 +32,7 @@ class EconRegltyCapital:
             *[F.when(F.col(c) == 999999999999999.99, F.lit(0)).otherwise(F.col(c)).alias(c)
               if c in ['gf_economic_capital_ead_amount', 'gf_ek_mitigated_el_adj_amount', 'gf_ek_adj_mit_dvrsfn_amount']
               else F.when(F.col(c) == 999.999999, F.lit(0)).otherwise(F.col(c)).alias(c)
-            if c in ['gf_ek_aftr_mit_wght_pd_per']
-            else c for c in econ_capital_sel.columns])
+              if c in ['gf_ek_aftr_mit_wght_pd_per'] else c for c in econ_capital_sel.columns])
 
         regl_capital_sel = risk_operations.get_regly_info_hold().filter(
             F.col("g_entific_id").isin("ES", "MX")
@@ -43,8 +42,8 @@ class EconRegltyCapital:
             *[F.when(F.col(c) == 999999999999999.99, F.lit(0)).otherwise(F.col(c)).alias(c)
               if c in ['gf_rce_amd_exposure_amount', 'gf_rce_adm_mit_captl_amount', 'gf_rce_adm_mit_el_amount']
               else F.when(F.col(c) == 999.999999, F.lit(0)).otherwise(F.col(c)).alias(c)
-            if c in ['gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per']
-            else c for c in regl_capital_sel.columns])
+              if c in ['gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per']
+              else c for c in regl_capital_sel.columns])
 
     def build_econ_reglty_capital(self):
         """
