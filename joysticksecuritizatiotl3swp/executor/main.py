@@ -40,6 +40,9 @@ class SecutiritizationProcess:  # pragma: no cover
         self.spark.conf.set('spark.sql.parquet.mergeSchema', 'true')
         self.spark.conf.set('spark.sql.execution.arrow.enabled', 'false')
         self.spark.conf.set('spark.sql.sources.partitionOverwriteMode', 'dynamic')
+        # Disabling the Vectorized Reader is NECESSARY as the output tables contain Decimal Types
+        # This may cause the BI tool to fail when reading the tables
+        self.spark.conf.set("spark.sql.parquet.enableVectorizedReader", "false")
 
         # Sandbox writer
         self.dslb_writer = DSLBWriter(self.logger, self.dataproc)
