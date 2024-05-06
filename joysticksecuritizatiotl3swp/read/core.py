@@ -69,12 +69,15 @@ class EconRegltyCapital:
                   on='g_contract_id',
                   how='right')
 
+        # Regulatory amounts are cross-valued in local currency, in MXN for Mexico and in EUR for BBVA SA
         regl_capital_df = self.fx.generic(
-            self.regl_capital_sel,
+            self.regl_capital_sel.withColumn('g_currency_id',
+                                             F.when(F.col('g_entific_id').isin('MX'), F.lit('MXN'))
+                                             .when(F.col('g_entific_id').isin('ES'), F.lit('EUR'))),
             {'gf_rce_amd_exposure_amount': 'gf_rce_amd_exposure_amount',
              'gf_rce_adm_mit_captl_amount': 'gf_rce_adm_mit_captl_amount',
              'gf_rce_adm_mit_el_amount': 'gf_rce_adm_mit_el_amount'},
-            currency_id_name='g_local_currency_id') \
+            currency_id_name='g_currency_id') \
             .selectExpr('g_contract_id', 'gf_rce_amd_exposure_amount', 'gf_rce_adm_mit_captl_amount',
                         'gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per', 'gf_rce_adm_mit_el_amount') \
             .join(self.contract_relations,
