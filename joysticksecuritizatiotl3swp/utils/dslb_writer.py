@@ -2,6 +2,7 @@
 Module to write in DSLB
 """
 from alfred.alerts.savers import save_data_to_csv
+from pyspark.sql import functions as F
 
 
 class DSLBWriter:  # pragma: no cover
@@ -52,6 +53,8 @@ class DSLBWriter:  # pragma: no cover
             if repartition_num:
                 df = df.repartition(repartition_num)
             if partition_cols:
+                # Align the schema of the dataframe with the existing parquet files
+                df = self.align_schemas(df, table_path)
                 self.dataproc.write().mode(write_mode).partition_by(partition_cols) \
                     .parquet(df.repartition(1, *partition_cols), table_path)
             else:
@@ -62,3 +65,42 @@ class DSLBWriter:  # pragma: no cover
         else:
             raise Exception('Table format is not supported! Available formats: parquet, csv')
         return True
+
+    def align_schemas(self, df_new, parquet_path):
+        """
+        This method aligns the schema of a new dataframe with an existing parquet file.
+
+        Parameters:
+        ----------
+        spark : SparkSession
+            Spark session
+        df_new : pyspark.sql.DataFrame
+            New dataframe
+        parquet_path : string
+            Path to the existing parquet file
+
+        Returns:
+        -------
+        pyspark.sql.DataFrame
+            Dataframe with the updated schema
+        """
+        # Read the existing parquet file and get its schema
+        df_existing = self.dataproc.read().parquet(parquet_path)
+        existing_schema = df_existing.schema
+
+        # Get the schema of the new dataframe
+        new_schema = df_new.schema
+
+        # Compare the two schemas
+        if str(existing_schema) != str(new_schema):
+            # For each field in the existing schema
+            for field in existing_schema:
+                # Check if there's a corresponding field in the new dataframe's schema
+                if any(f.name == field.name for f in new_schema):
+                    # Cast the new dataframe's field to the type of the existing schema's field
+                    df_new = df_new.withColumn(
+                        field.name, F.col(field.name).cast(field.dataType)
+                    )
+
+        # Return the new dataframe with the updated schema
+        return df_new

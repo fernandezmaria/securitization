@@ -461,6 +461,7 @@ class SecutiritizationProcess:  # pragma: no cover
         self.logger.info("Main.execute_process ended. Output count = " + str(cubo_aud.count()))
 
         # Write using DSLBWriter
+        self.spark.conf.set('spark.sql.parquet.mergeSchema', 'false')
         self.dslb_writer.write_df_to_sb(cubo_aud, f'{self.sandbox_path}mrr/mrr_csv',
                                         'securitization_model_portfolio_' + date_clan + '.csv', 'csv', 'overwrite')
         self.dslb_writer.write_df_to_sb(cubo_aud, f'{self.sandbox_path}mrr', 'joystick_mrr', 'parquet', 'overwrite',
