@@ -57,8 +57,11 @@ class EconRegltyCapital:
         This method returns the economic and regulatory capital information.
         """
         self.logger.info("EconRegltyCapital.build_econ_reglty_capital")
+        # Economic amounts are cross-valued in local currency, in MXN for Mexico and in EUR for BBVA SA
         econ_capital_df = self.fx.generic(
-            self.econ_capital_sel,
+            self.econ_capital_sel.withColumn('g_currency_id',
+                                             F.when(F.col('g_entific_id').isin('MX'), F.lit('MXN'))
+                                             .when(F.col('g_entific_id').isin('ES'), F.lit('EUR'))),
             {'gf_economic_capital_ead_amount': 'gf_economic_capital_ead_amount',
              'gf_ek_mitigated_el_adj_amount': 'gf_ek_mitigated_el_adj_amount',
              'gf_ek_adj_mit_dvrsfn_amount': 'gf_ek_adj_mit_dvrsfn_amount'},
