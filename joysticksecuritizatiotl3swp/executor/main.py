@@ -7,6 +7,7 @@ from itertools import chain
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from rubik.load.branches import Branches
+from rubik.load.movements import Movements
 from rubik.load.operations import Operations
 from rubik.load.products import Products
 from rubik.utils.partitions import PartitionsUtils
@@ -187,7 +188,7 @@ class SecutiritizationProcess:  # pragma: no cover
                                          'borrower_country_id',
                                          'entity_id', 'branch_id',
                                          'operation_reference_id', 'page_id',
-                                         'project_id',
+                                         'project_id', 'syndicated_type',
                                          'deal_purpose_type', 'project_sector_desc'). \
             join(deals_bal, on=['delta_file_id', 'delta_file_band_id',
                                 "entity_id", "branch_id", 'currency_id'],
@@ -401,6 +402,20 @@ class SecutiritizationProcess:  # pragma: no cover
             .join(t_kctk_cust_rating_atrb,
                   how='left', on='g_customer_id')
 
+        # Payment condition STS: At Least 1 Payment Made
+        mvts = Movements('/data', self.dataproc).get_movements(origin_apps=['CLAN'], from_date=None, to_date=None) \
+            .filter((F.col('gf_payment_situation_type_desc').isin('Manually Settled', 'Settled')) &
+                    (F.col('gf_movement_class_desc').isin('Fees', 'Interest',
+                                                          'Fee Payment', 'Repayment of principal')))\
+            .select(F.col('gf_facility_id').alias('delta_file_id'),
+                    F.col('gf_fclty_trc_id').alias('delta_file_band_id'),
+                    F.col('g_branch_id').alias('branch_id'),
+                    F.lit(True).alias('sts_payment_condition'))\
+            .distinct()
+
+        ops_clan = ops_clan.join(mvts, on=['delta_file_id', 'delta_file_band_id', 'branch_id'], how='left')\
+            .fillna({'sts_payment_condition': False})
+
         # Add entity description
         entities = (
             EntityCatalogue(self.logger, self.dataproc)
@@ -417,6 +432,7 @@ class SecutiritizationProcess:  # pragma: no cover
             select('delta_file_id', 'delta_file_band_id', 'branch_id', 'project_id', 'project_country_desc',
                    'financial_product_desc', 'project_sector_desc', 'deal_purpose_type', 'seniority_name',
                    'insured_type', 'currency_id', 'deal_signing_date', 'expiration_date',
+                   'syndicated_type', 'sts_payment_condition',
                    'financial_product_class_desc', 'customer_id', 'g_customer_id', 'customer_country',
                    'g_holding_group_id', 'group_country_desc',
                    F.col("entity_id").alias("banking_entity_id"),
