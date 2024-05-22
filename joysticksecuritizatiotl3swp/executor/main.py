@@ -23,7 +23,7 @@ from joysticksecuritizatiotl3swp.read.paths import Paths
 from joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
 
 
-class SecutiritizationProcess:  # pragma: no cover
+class SecuritizationProcess:  # pragma: no cover
     """
     Main class to execute the process
     """
@@ -409,7 +409,7 @@ class SecutiritizationProcess:  # pragma: no cover
                                                           'Fee Payment', 'Repayment of principal')))\
             .select(F.col('gf_facility_id').alias('delta_file_id'),
                     F.col('gf_fclty_trc_id').alias('delta_file_band_id'),
-                    F.col('g_branch_id').alias('branch_id'),
+                    F.col('gf_branch_id').alias('branch_id'),
                     F.lit(True).alias('sts_payment_condition'))\
             .distinct()
 
@@ -427,7 +427,6 @@ class SecutiritizationProcess:  # pragma: no cover
             on="entity_id",
             how="left",
         )
-
         cubo_aud = ops_clan. \
             select('delta_file_id', 'delta_file_band_id', 'branch_id', 'project_id', 'project_country_desc',
                    'financial_product_desc', 'project_sector_desc', 'deal_purpose_type', 'seniority_name',
