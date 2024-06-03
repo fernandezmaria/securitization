@@ -34,7 +34,7 @@ class FX:
             This method returns the joined data.
         """
 
-        self.logger.info("FX.general")
+        self.logger.info("FX.generic")
 
         df = df. \
             join(self.fx.withColumnRenamed('currency', currency_id_name), on=currency_id_name, how='left'). \

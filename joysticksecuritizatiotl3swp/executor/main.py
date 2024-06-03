@@ -1,6 +1,7 @@
 """
 Run process through this file
 """
+import datetime
 import re
 from itertools import chain
 
@@ -18,8 +19,12 @@ from joysticksecuritizatiotl3swp.configurations.constants import Constants
 from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital, IFRS9
 from joysticksecuritizatiotl3swp.read.entity_cat import EntityCatalogue
 from joysticksecuritizatiotl3swp.read.fx import FX
+from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import GuaranteesAndGuarantorsBuilder
+from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import GuaranteesAndGuarantorsLoader
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.read.securitizations import Securitizations
+from joysticksecuritizatiotl3swp.transform.clan import ItemsBalance
 from joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
 
 
@@ -84,6 +89,7 @@ class SecuritizationProcess:  # pragma: no cover
                         .get_newest_date_data(data=regl.filter(F.col('g_entific_id').isin(['ES', 'MX'])),
                                               date_part_col=self.paths.config_reg_capital['column_date']))
         date_reg_econ_capital = min(set(date_econ).union(set(date_regl)))
+        fecha_valor = datetime.datetime.strptime(date_reg_econ_capital, "%Y-%m-%d").date()
         self.logger.info('Date REGULATORIO Y ECONÓMICO: ' + str(date_reg_econ_capital))
         # FECHA DE CLAN: tomamos la más reciente o si se ha pasado una fecha, bajo demanda
         if self.clan_date is not None:
@@ -173,7 +179,6 @@ class SecuritizationProcess:  # pragma: no cover
             )
             .distinct()
         )
-
         saldos_oficina = deals_op.select('delta_file_id', 'delta_file_band_id',
                                          'project_country_id',
                                          'file_product_desc',
@@ -197,6 +202,32 @@ class SecuritizationProcess:  # pragma: no cover
             .join(deals_cust,
                   on=["delta_file_id", "delta_file_band_id", "entity_id", "branch_id"],
                   how="left")
+
+        # Cómputo de plazo_medio
+
+        saldos_cruce = saldos_oficina.select(
+            "delta_file_id",
+            "delta_file_band_id",
+            "entity_id",
+            "branch_id",
+            # "file_tranche_status_type",
+            "deal_signing_date",
+            "expiration_date",
+        )
+
+        items = operations.getOperationsProperties("items").getItems_total()
+        items_balance = ItemsBalance(self.logger, self.dataproc)
+        items = items_balance.cruce(items, saldos_cruce)
+
+        evol_saldos = items_balance.narrow_down_movs(items)
+        evol_saldos = items_balance.balance_evolution(evol_saldos, fecha_valor)
+
+        list_year = [fecha_valor.year + x for x in range(0, 11)]
+        col_year = ["imp_amortizado_y" + str(x) for x in range(0, 11)]
+
+        _, runoff2 = items_balance.runoff(
+            evol_saldos, fecha_valor, col_year, list_year
+        )
 
         contract_relations = operations.get_deals_global_contract_relations(saldos_oficina)
         self.dslb_writer.write_df_to_sb(contract_relations, f'{self.sandbox_path}auxiliar',
@@ -231,6 +262,33 @@ class SecuritizationProcess:  # pragma: no cover
                      'smscl_reg_internal_ratg_type': 'No Rating',
                      'lmscl_reg_internal_ratg_type': 'No Rating'})
             .fillna(0))
+
+        ops_clan = ops_clan.join(
+            runoff2.select(
+                ["delta_file_id", "delta_file_band_id", "branch_id", "vto_medio"]
+            ),
+            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            how="left",
+        ).fillna(0).withColumn(
+            "plazo_medio",
+            F.datediff(F.to_date(F.col("vto_medio")), F.col("deal_signing_date")) / 365,
+        ).fillna(0, subset=["plazo_medio"])
+
+        # Persist data
+        self.logger.info("cache: ops_clan")
+        self.dslb_writer.write_df_to_sb(
+            ops_clan,
+            self.sandbox_path + "auxiliar",
+            "auxiliar_clan_mrr",
+            write_mode="overwrite",
+        )
+        self.spark.catalog.clearCache()
+        self.logger.info("cache cleaned")
+        self.logger.info("reading tables")
+
+        ops_clan = self.dataproc.read().parquet(
+            self.sandbox_path + "auxiliar/auxiliar_clan_mrr"
+        )
 
         # Convertimos la escala de ratings a numérica con el diccionario
         mapping_expr = F.create_map(*[F.lit(x) for x in chain(*rating_dict.items())])
@@ -331,7 +389,7 @@ class SecuritizationProcess:  # pragma: no cover
         ops_clan = ops_clan. \
             join(rel_actividad_aa2,
                  on=['gf_holding_activity_sector_id'], how='left')
-        # SUBSECTOR Y SECTOR: descripcciones
+        # SUBSECTOR Y SECTOR: descripciones
         ops_clan = ops_clan. \
             join(cat_subsector,
                  on=['g_asset_allocation_subsec_type'], how='left'). \
@@ -388,7 +446,7 @@ class SecuritizationProcess:  # pragma: no cover
             'gf_pf_current_ratg_id',
             'gf_pf_score_ind_desc',
             'gf_pf_final_lgd_amount',
-            'gf_pf_ratg_date')
+            F.substring('gf_pf_ratg_date', 1, 10).alias('gf_pf_ratg_date'))
 
         t_kctk_cust_rating_atrb = self.dataproc.read().parquet(self.paths.path_cust_rating).filter(
             F.col(self.paths.campo_date) == date_client_rat_attr) \
@@ -417,6 +475,43 @@ class SecuritizationProcess:  # pragma: no cover
         ops_clan = ops_clan.join(mvts, on=['delta_file_id', 'delta_file_band_id', 'branch_id'], how='left')\
             .fillna({'sts_payment_condition': False})
 
+        # Match Clan-Titularizaciones
+
+        securitizations = Securitizations(self.logger, self.spark, self.dataproc)
+        ops_clan = ops_clan.join(
+            securitizations.securitization(),
+            on=["delta_file_band_id", "delta_file_id", "branch_id"],
+            how="left",
+        ).fillna({"gf_securitization_id": "N"})
+        ops_clan = ops_clan.withColumn(
+            "gf_facility_securitization_amount",
+            (F.col("gf_facility_securitization_per") / 100)
+            * F.col("gf_rce_amd_exposure_amount"),
+        ).fillna({"gf_facility_securitization_amount": 0})
+
+        # Guarantees and guarantors
+        guar_assignments, guar_struc_board = GuaranteesAndGuarantorsLoader(
+            self.logger, self.dataproc
+        ).get_guarantees_information(date_reg_econ_capital.replace("-", ""))
+        guaranteed_amounts = GuaranteesAndGuarantorsBuilder(
+            self.logger,
+            self.dataproc,
+            fx,
+            contract_relations,
+            guar_assignments,
+            guar_struc_board,
+            maestro_grupos
+        ).build_guaranteed_amounts()
+        ops_clan = ops_clan.join(
+            guaranteed_amounts,
+            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            how="left",
+        )
+
+        # Risk Weight condition STS:
+        ops_clan = ops_clan.withColumn('sts_sm_rw_condition', 100*F.col('gf_rw_sm_per') < 100)\
+            .fillna({'sts_sm_rw_condition': True})
+
         # Add entity description
         entities = (
             EntityCatalogue(self.logger, self.dataproc)
@@ -431,8 +526,9 @@ class SecuritizationProcess:  # pragma: no cover
         cubo_aud = ops_clan. \
             select('delta_file_id', 'delta_file_band_id', 'branch_id', 'project_id', 'project_country_desc',
                    'financial_product_desc', 'project_sector_desc', 'deal_purpose_type', 'seniority_name',
-                   'insured_type', 'currency_id', 'deal_signing_date', 'expiration_date',
-                   'syndicated_type', 'sts_payment_condition',
+                   'insured_type', 'currency_id', 'expiration_date',
+                   F.substring('deal_signing_date', 1, 10).alias('deal_signing_date'),
+                   'syndicated_type', 'sts_payment_condition', 'gf_rw_sm_per', 'sts_sm_rw_condition',
                    'financial_product_class_desc', 'customer_id', 'g_customer_id', 'customer_country',
                    'g_holding_group_id', 'group_country_desc',
                    F.col("entity_id").alias("banking_entity_id"),
@@ -457,6 +553,8 @@ class SecuritizationProcess:  # pragma: no cover
                    'gf_capital_adjustment_desc', 'gf_pf_project_const_type', 'gf_sbprfl_mrch_risk_ind_type',
                    'gf_pf_current_ratg_id', 'gf_pf_score_ind_desc', 'gf_pf_final_lgd_amount', 'gf_pf_ratg_date',
                    'gf_current_rating_tool_date', 'g_smscl_internal_ratg_type', 'g_lmscl_internal_ratg_type',
+                   'gf_facility_securitization_amount', 'bei_guaranteed_amount', 'non_bei_guaranteed_amount',
+                   'plazo_medio',
                    ). \
             withColumn('exchange_rate', F.col('total_nominal_amount') / F.col('total_nominal_eur_amount')). \
             withColumn('Total_Amount_CCY', F.col('bbva_drawn_amount') + F.col('bbva_available_amount')). \

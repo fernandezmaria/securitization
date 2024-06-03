@@ -69,6 +69,64 @@ segment_dict = {
     '00006': 'Financial Sponsors'
 }
 
+# CONFIGURACIONES DE TIPOS DE MOVIMIENTOS
+mov_evol_saldos = [
+    "Authorized Amount Increase",
+    "Authorized Amount Reduction",
+    "Drawdown",
+    "Repayment of Principal",
+]
+
+# grupos de movimientos para calculos posteriores
+listaMov = [
+    "Authorized Amount Reduction for Irregular Payment",
+    "Early Authorized Amount Reduction",
+    "Non-Revolving Guarantee Reduction",
+    "RCF Mandatory Early Repayment",
+    "RCF Total Early Repayment",
+    "Revolving Guarantee Drawdown Cancellation",
+    "Revolving Guarantee Drawdown Early Cancellation",
+    "Term Loan Mandatory Early Repayment",
+    "Term Loan Repayment",
+    "Term Loan Total Early Repayment",
+    "Term Loan Voluntary Early Repayment",
+    "Voluntary RCF Early Repayment",
+]
+
+listaMov1 = [
+    "Drawdown Increase",
+    "Non-Revolving Guarantee Drawdown",
+    "RCF Drawdown",
+    "Revolving Guarantee Drawdown",
+    "Revolving Guarantee Increase",
+    "Term Loan Drawdown",
+]
+
+listaMov2 = [
+    "Non-Revolving Guarantee Reduction",
+    "Non-Revolving Guarantee Drawdown Cancellation",
+    "Non-Revolving Guarantee Drawdown Early Cancellation",
+    "RCF Mandatory Early Repayment",
+    "RCF Refund",
+    "RCF Refund#",
+    "RCF Total Early Repayment",
+    "Revolving Guarantee Drawdown Cancellation",
+    "Revolving Guarantee Drawdown Early Cancellation",
+    "Revolving Guarantee Reduction",
+    "Term Loan Mandatory Early Repayment",
+    "Term Loan Refund",
+    "Term Loan Repayment",
+    "Term Loan Total Early Repayment",
+    "Term Loan Voluntary Early Repayment",
+    "Voluntary RCF Early Repayment",
+]
+
+listaMov4 = [
+    "RCF Refund#",
+    "Revolving Guarantee Drawdown Cancellation",
+    "Term Loan Repayment",
+]
+
 
 def get_countries_iso_name_table(spark):  # pragma: no cover
     """

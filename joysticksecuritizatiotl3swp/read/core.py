@@ -42,7 +42,7 @@ class EconRegltyCapital:
             *[F.when(F.col(c) == 999999999999999.99, F.lit(0)).otherwise(F.col(c)).alias(c)
               if c in ['gf_rce_amd_exposure_amount', 'gf_rce_adm_mit_captl_amount', 'gf_rce_adm_mit_el_amount']
               else F.when(F.col(c) == 999.999999, F.lit(0)).otherwise(F.col(c)).alias(c)
-              if c in ['gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per']
+              if c in ['gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per', 'gf_rw_sm_per']
               else c for c in regl_capital_sel.columns])
 
     def build_econ_reglty_capital(self):
@@ -82,7 +82,8 @@ class EconRegltyCapital:
              'gf_rce_adm_mit_el_amount': 'gf_rce_adm_mit_el_amount'},
             currency_id_name='g_currency_id') \
             .selectExpr('g_contract_id', 'gf_rce_amd_exposure_amount', 'gf_rce_adm_mit_captl_amount',
-                        'gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per', 'gf_rce_adm_mit_el_amount') \
+                        'gf_aftr_mit_wght_pd_per', 'gf_rce_amd_appl_calc_lgd_per', 'gf_rw_sm_per',
+                        'gf_rce_adm_mit_el_amount') \
             .join(self.contract_relations,
                   on='g_contract_id',
                   how='right')
@@ -108,6 +109,8 @@ class EconRegltyCapital:
                  F.max('gf_rce_adm_mit_captl_amount').alias('gf_rce_adm_mit_captl_amount'),
                  (F.sum(F.col('gf_aftr_mit_wght_pd_per') * F.col('gf_rce_amd_exposure_amount')) /
                   F.sum('gf_rce_amd_exposure_amount')).alias('pd_ma_mitig_per'),
+                 (F.sum(F.col('gf_rw_sm_per') * F.col('gf_rce_amd_exposure_amount')) /
+                  F.sum('gf_rce_amd_exposure_amount')).alias('gf_rw_sm_per'),
                  F.max('gf_rce_amd_appl_calc_lgd_per').alias('gf_rce_amd_appl_calc_lgd_per'),
                  F.max('gf_rce_adm_mit_el_amount').alias('gf_rce_adm_mit_el_amount')
                  ) \
