@@ -387,7 +387,8 @@ class SecuritizationProcess:  # pragma: no cover
             'gf_sbprfl_mrch_risk_ind_type',
             'gf_pf_current_ratg_id',
             'gf_pf_score_ind_desc',
-            'gf_pf_final_lgd_amount')
+            'gf_pf_final_lgd_amount',
+            'gf_pf_ratg_date')
 
         t_kctk_cust_rating_atrb = self.dataproc.read().parquet(self.paths.path_cust_rating).filter(
             F.col(self.paths.campo_date) == date_client_rat_attr) \
@@ -454,7 +455,7 @@ class SecuritizationProcess:  # pragma: no cover
                    F.col('gf_ek_mitigated_el_adj_amount').alias('gf_m5_total_el_amount'),
                    F.col('gf_rce_adm_mit_el_amount').alias('gf_ma_tot_expected_loss_amount'),
                    'gf_capital_adjustment_desc', 'gf_pf_project_const_type', 'gf_sbprfl_mrch_risk_ind_type',
-                   'gf_pf_current_ratg_id', 'gf_pf_score_ind_desc', 'gf_pf_final_lgd_amount',
+                   'gf_pf_current_ratg_id', 'gf_pf_score_ind_desc', 'gf_pf_final_lgd_amount', 'gf_pf_ratg_date',
                    'gf_current_rating_tool_date', 'g_smscl_internal_ratg_type', 'g_lmscl_internal_ratg_type',
                    ). \
             withColumn('exchange_rate', F.col('total_nominal_amount') / F.col('total_nominal_eur_amount')). \
