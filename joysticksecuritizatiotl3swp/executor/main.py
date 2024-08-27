@@ -509,7 +509,7 @@ class SecuritizationProcess:  # pragma: no cover
         )
 
         # Risk Weight condition STS:
-        ops_clan = ops_clan.withColumn('sts_sm_rw_condition', 100*F.col('gf_rw_sm_per') < 100)\
+        ops_clan = ops_clan.withColumn('sts_sm_rw_condition', 100*F.col('gf_rw_sm_per') <= 100)\
             .fillna({'sts_sm_rw_condition': True})
 
         # Add entity description
