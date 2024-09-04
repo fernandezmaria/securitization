@@ -13,10 +13,6 @@ class Constants:  # pragma: no cover
         Constructor
         """
         self.CONFIG = {
-            'PRODUCTION': {
-                'SANDBOX_PATH': parameters['SANDBOX_PATH_PROD']
-            },
-            'DEVELOPMENT': {
-                'SANDBOX_PATH': parameters['SANDBOX_PATH_DEV']
-            }
+            "PRODUCTION": {"SANDBOX_PATH": parameters["SANDBOX_PATH_PROD"]},
+            "DEVELOPMENT": {"SANDBOX_PATH": parameters["SANDBOX_PATH_DEV"]},
         }

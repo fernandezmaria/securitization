@@ -69,8 +69,8 @@ def get_params_from_hps() -> Dict:
     args = dict(os.environ)
     arg_params = {}
     if "SM_HPS" in args.keys():
-        arg_params = json.loads(args['SM_HPS'])
-        if 'PACKAGE_NAME' in arg_params.keys():
-            arg_params.pop('PACKAGE_NAME')
+        arg_params = json.loads(args["SM_HPS"])
+        if "PACKAGE_NAME" in arg_params.keys():
+            arg_params.pop("PACKAGE_NAME")
 
     return arg_params

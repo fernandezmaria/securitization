@@ -2,7 +2,7 @@
 scaffold_id="1d5c226a-9f7b-4d3d-90e3-ec7f7d1c8120"
 
 [ENVIRONMENT]
-region="gl.l"
+region="gl.p"
 
 [DATAFLOW]
 commit=
@@ -13,7 +13,7 @@ commit=
 [PIPELINE_CONFIG]
 instance_type=
 instance_count=
-volume_size=
+volume_size="20"
 docker_image=
 framework="generic"
-user_id="UNKNOWN"
+user_id="XE95836"
