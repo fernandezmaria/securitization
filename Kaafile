@@ -1,22 +1,11 @@
 [project]
 type = "WORKER"
-version = "0.1.19"
+version = "0.1.0"
 name = "joysticksecuritizatiotl3swp"
 package = "pyspark"
 config = "resources/application.conf"
 
 [[source]]
-url = "https://pypi.org/simple/"
-verify_ssl = true
-name = "pypi"
-
-[[source]]
-url = "https://${ARTIFACTORY_BOT_BASIC_AUTH}@artifactory.globaldevtools.bbva.com/artifactory/api/pypi/gl-datio-runtime-pypi-local/simple/"
-verify_ssl = true
-name = "datio"
-
-[[source]]
-url = "https://${ARTIFACTORY_BOT_BASIC_AUTH}@artifactory.globaldevtools.bbva.com/artifactory/api/pypi/gl-datio-runtime-pypi-virtual/simple/"
+url = "https://${ARTIFACTORY_VDC_BOT_BASIC_AUTH}@artifactory.globaldevtools.bbva.com/artifactory/api/pypi/gl-datio-runtime-pypi-virtual/simple/"
 verify_ssl = true
 name = "python-global"
-

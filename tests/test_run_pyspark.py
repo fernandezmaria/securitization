@@ -3,7 +3,6 @@ from unittest import TestCase
 from unittest.mock import PropertyMock, MagicMock, patch
 import os
 
-
 from joysticksecuritizatiotl3swp.run_pyspark import Main
 
 from py4j.java_gateway import GatewayProperty, GatewayClient, JavaObject
@@ -15,44 +14,12 @@ class TestApp(TestCase):
     Test class for Dataproc Pyspark job entrypoint execution
     """
 
-    
+    @patch('joysticksecuritizatiotl3swp.run_pyspark.get_params_from_env')
+    def test_app_unknown_error(self, mock_get_params):
+        mock_get_params.side_effect = Exception("Test exception")
 
-    def test_app_empty_config(self):
-        """
-        Test app entrypoint execution with empty config file
-        """
-
-        runtimeContext = MagicMock()
-        config = MagicMock()
         app_main = Main()
-
-        gateway_property = GatewayProperty(auto_field="Mock", pool="Mock")
-        client = GatewayClient(gateway_property=gateway_property)
-        java_object = JavaObject("RunTimeError", client)
-        config.getObject = MagicMock(
-            side_effect=Py4JJavaError("no params", java_object)
-        )
-        config.getString = MagicMock(return_value="empty")
-        runtimeContext.getConfig = MagicMock(return_value=config)
-
-        if os.path.exists("./joysticksecuritizatiotl3swp/dataflow.py"):
-            with patch("joysticksecuritizatiotl3swp.run_pyspark.dataproc_dataflow"):
-                ret_code = app_main.main(runtimeContext)
-        else:
-            with patch("joysticksecuritizatiotl3swp.run_pyspark.DataprocExperiment"):
-                ret_code = app_main.main(runtimeContext)
-
-        self.assertEqual(ret_code, 0)
-
-    def test_app_unknown_error(self):
-        """
-        Test app entrypoint execution with Exception
-        """
-
-        runtimeContext = MagicMock()
-        app_main = Main()
-
-        runtimeContext.getConfig = MagicMock(side_effect=Exception())
+        runtimeContext = MagicMock()  # This may not be necessary if get_params_from_env is mocked
 
         ret_code = app_main.main(runtimeContext)
 

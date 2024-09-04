@@ -1,7 +1,0 @@
-[flake8]
-extend-ignore = E501, E203, E402
-exclude = build, dist, .git, .tox, tests, venv, .venv, .pyenv, docs, examples, .poetry, .pip-installation, .ipynb_checkpoints
-max-line-length = 119
-per-file-ignores =
-  joysticksecuritizatiotl3swp/app.py:E402, E501
-  joysticksecuritizatiotl3swp/experiment.py:E402, E501

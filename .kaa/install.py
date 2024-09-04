@@ -51,7 +51,7 @@ def _install_pykaa() -> None:
     user_flag = "" if "VIRTUAL_ENV" in os.environ else "--user"
     credentials = "%s:%s" % (os.environ["ARTIFACTORY_USER_PROFILE"], os.environ["ARTIFACTORY_API_KEY"])
     uri = "https://%s@artifactory.globaldevtools.bbva.com/artifactory/api/pypi/gl-datio-runtime-pypi-local/simple/" % (credentials)
-    command = "pip install %s pykaa==0.5.3 pykaa-dataproc -U --extra-index-url %s" % (user_flag, uri)
+    command = "pip install %s pykaa>=0.5.3 pykaa-dataproc-aws -U --extra-index-url %s" % (user_flag, uri)
     subprocess.run(shlex.split(command), check=True)
 
 

@@ -42,12 +42,8 @@ def main() -> int:
     Returns:
         int: exit code.
     """
-    if len(sys.argv) != 2:
-        print("Usage: spark-submit <MASTER_OPTIONS> worker.py <CONFIG_FILE>",
-              file=sys.stderr)
-        return -1
 
-    ret_code = SparkLauncher().execute(InitTask, [sys.argv[1], 'InitTask'])
+    ret_code = SparkLauncher().execute(InitTask, ['InitTask'])
     print("#########################")
     print("Exit code: %s" % ret_code)
     print("#########################")
