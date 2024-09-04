@@ -5,7 +5,7 @@ os.environ["ENMA_CONFIG_PATH"] = os.path.join(
 )
 from py4j.java_gateway import JavaObject
 from dataproc_sdk.dataproc_sdk_utils.logging import get_user_logger
-from joysticksecuritizatiotl3swp.config import get_params_from_runtime
+from joysticksecuritizatiotl3swp.config import get_params_from_env
 
 if os.path.isfile(os.path.join(os.path.dirname(__file__), "dataflow.py")):
     from joysticksecuritizatiotl3swp.dataflow import dataproc_dataflow  # noqa: E402
@@ -33,12 +33,9 @@ class Main:
         parameters = {}
 
         # PART 1 - READ FROM CONFIGURATION
-        # Reading config file for input and output paths
+        # Reading environment variables for input and output paths
         try:
-            config = runtimeContext.getConfig()
-            if not config.isEmpty():
-                root_key = "EnvironmentVarsPM"
-                parameters = get_params_from_runtime(runtimeContext, root_key)
+            parameters = get_params_from_env()
         except Exception as e:
             self.__logger.error(e)
             return -1
@@ -51,7 +48,7 @@ class Main:
             dataflow_path = os.path.join(os.path.dirname(__file__), "dataflow.py")
             if os.path.isfile(dataflow_path):
                 self.__logger.info("Executing dataflow code")
-                dataproc_dataflow.run_dataproc(**parameters)
+                dataproc_dataflow.run(**parameters)
                 self.__logger.info("Dataflow code executed")
             else:
                 self.__logger.info("Executing experiment code")

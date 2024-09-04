@@ -22,27 +22,10 @@ class TestWorker(TestCase):
     def setUp(self, logger):
         self.monkeypatch = MonkeyPatch()
 
-    def test_worker_no_args(self):
-        """
-        Test worker entrypoint execution with no arguments
-        """
-
-        sys.argv = [__file__]
-
-        ret_code = main()
-
-        self.assertEqual(ret_code, -1)
-
     def test_main(self):
         """
         Test worker entrypoint execution with config.
         """
-
-        config = MagicMock()
-        cfg_file = NamedTemporaryFile(prefix="application", suffix=".conf")
-        sys.argv = [__file__, cfg_file.name]
-
-        config.getString = MagicMock(return_value=os.path.realpath(__file__))
 
         with patch(
 			"joysticksecuritizatiotl3swp.run_pyspark.Main.main", return_value=0

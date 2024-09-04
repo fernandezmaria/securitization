@@ -1,27 +1,11 @@
 from unittest import TestCase
 from unittest.mock import patch, mock_open, MagicMock
+import os
+import sys
 
-from joysticksecuritizatiotl3swp.config import (
-    get_params_from_job_env,
-    get_params_from_config,
-    get_params_from_runtime,
-)
-
-
-APPLICATION_CONF_MOCK: str = """
-    {
-        config {
-            B_SIZE = ${?B_SIZE_OVERWRITE}
-            EPOCHS = ${?EPOCHS_OVERWRITE}
-        }
-    }
-"""
-
-EMPTY_APPLICATION_CONF_MOCK: str = """
-    {
-        application="empty"
-    }
-"""
+from joysticksecuritizatiotl3swp.config import get_params_from_args
+from joysticksecuritizatiotl3swp.config import get_params_from_env
+from joysticksecuritizatiotl3swp.config import get_params_from_hps
 
 
 class ConfigTestCase(TestCase):
@@ -30,65 +14,53 @@ class ConfigTestCase(TestCase):
     Test case for a Python entrypoint execution.
     """
 
-    def test__get_params_from_config__empty_conf(self) -> None:
-        run_params = '[{"B_SIZE_OVERWRITE": "40", "EPOCHS_OVERWRITE": "5"}]'
+    def test__get_params_from_args_empty(self) -> None:
+        testargs = ["prog"]
 
-        with patch(
-            "os.getenv",
-            return_value=run_params,
-        ), patch(
-            "builtins.open",
-            mock_open(read_data=EMPTY_APPLICATION_CONF_MOCK),
-        ):
-            parameters = get_params_from_config("foo.conf")
+        with patch.object(sys, 'argv', testargs):
+            parameters = get_params_from_args()
 
         self.assertEqual(parameters, {})
 
-    def test__get_params_from_config__empty_env(self) -> None:
-        run_params = '[{"B_SIZE_OVERWRITE": "40", "EPOCHS_OVERWRITE": "5"}]'
+    def test__get_params_from_args(self) -> None:
+        testargs = ["prog", "PARAM_FILE", "foo.txt"]
 
-        with patch(
-            "os.getenv",
-            return_value=run_params,
-        ), patch(
-            "builtins.open",
-            mock_open(read_data=APPLICATION_CONF_MOCK),
-        ):
-            parameters = get_params_from_config("foo.conf")
+        with patch.object(sys, 'argv', testargs):
+            parameters = get_params_from_args()
 
-        self.assertEqual(parameters, {
-            "B_SIZE": "40",
-            "EPOCHS": "5",
-        })
+        self.assertEqual(parameters, {"FILE": "foo.txt"})
 
-    def test__get_params_from_config__overrides(self) -> None:
-        run_params = '[{"B_SIZE_OVERWRITE": "50"}]'
+    def test__get_params_from_env_empty(self) -> None:
+        testargs = {}
 
-        with patch(
-            "os.getenv",
-            return_value=run_params,
-        ), patch(
-            "builtins.open",
-            mock_open(read_data=APPLICATION_CONF_MOCK),
-        ):
-            parameters = get_params_from_config("foo.conf")
+        with patch.object(os, 'environ', testargs):
+            parameters = get_params_from_env()
 
-        self.assertEqual(parameters, {
-            "B_SIZE": "50",
-        })
+        self.assertEqual(parameters, {})
 
-    def test__get_params_from_runtime__overrides(self) -> None:
-        value = "foo"
-        params = {
-            "foo": value,
-            "bar": value,
+    def test__get_params_from_env(self) -> None:
+        testargs = {"PARAM_FILE": "foo.txt"}
+
+        with patch.object(os, 'environ', testargs):
+            parameters = get_params_from_env()
+
+        self.assertEqual(parameters, {"FILE": "foo.txt"})
+
+    def test__get_params_from_hps_empty(self) -> None:
+        testargs = {}
+
+        with patch.object(os, 'environ', testargs):
+            parameters = get_params_from_hps()
+
+        self.assertEqual(parameters, {})
+
+    def test__get_params_from_hps(self) -> None:
+        testargs = {
+            'USER': 'user123',
+            'SM_HPS': '{"FILE": "foo.txt", "PACKAGE_NAME": "my_package"}'
         }
-        runtime = MagicMock()
-        runtime.getConfig.return_value.getObject.return_value = params
-        runtime.getConfig.return_value.getString.return_value = value
-        runtime.getConfig.return_value.isEmpty.return_value = False
 
-        parameters = get_params_from_runtime(runtime, "foo")
+        with patch.object(os, 'environ', testargs):
+            parameters = get_params_from_hps()
 
-        self.assertEqual(parameters, params)
-
+        self.assertEqual(parameters, {"FILE": "foo.txt"})

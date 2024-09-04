@@ -5,11 +5,11 @@ joysticksecuritizatiotl3swp
 This scaffold contains a Engine example that works in both Local (PC) and Sandbox.
 
 You can start developing your engine in 2 ways:
-1. Adding a notebook inside the notebooks folder. You can use the examples that are in the `examples/` folder. You just need to copy the contents of the example folder you want to use into the root folder. For example, copy the contents of `examples/pyspark_contracts/` into the root folder and run notebooks `notebooks/engine.ipynb`.
+1. Adding a notebook inside the notebooks folder. You can use the examples that are in the `examples/` folder. You just need to copy the contents of the example folder you want to use into the root folder. For example, copy the contents of `examples/engine_etl_python/` into the root folder and run notebooks `notebooks/dataflow.ipynb`.
 ```
-cp -r examples/pyspark_contracts/* .
+cp -r examples/engine_etl_python/* .
 ```
-2. Generating your own python code inside the `joysticksecuritizatiotl3swp/experiment.py` file.
+2. Generating your own python code inside the `joysticksecuritizatiotl3swp/dataflow.py` file.
 
 How to use it in your Sandbox!
 ------------------------------
