@@ -461,6 +461,13 @@ class SecuritizationProcess:  # pragma: no cover
             .join(t_kctk_cust_rating_atrb,
                   how='left', on='g_customer_id')
 
+        # Convertimos la escala de ratings a numérica con el diccionario
+        ops_clan = ops_clan.withColumn(
+            "ind_rating", mapping_expr.getItem(F.col("g_lmscl_internal_ratg_type"))
+        ).withColumn(
+            "ind_inv_grade", F.when(F.col("ind_rating") <= "10", 1).otherwise(0)
+        )
+
         # Payment condition STS: At Least 1 Payment Made
         mvts = Movements('/data', self.dataproc).get_movements(origin_apps=['CLAN'], from_date=None, to_date=None) \
             .filter((F.col('gf_payment_situation_type_desc').isin('Manually Settled', 'Settled')) &
@@ -554,7 +561,7 @@ class SecuritizationProcess:  # pragma: no cover
                    'gf_pf_current_ratg_id', 'gf_pf_score_ind_desc', 'gf_pf_final_lgd_amount', 'gf_pf_ratg_date',
                    'gf_current_rating_tool_date', 'g_smscl_internal_ratg_type', 'g_lmscl_internal_ratg_type',
                    'gf_facility_securitization_amount', 'bei_guaranteed_amount', 'non_bei_guaranteed_amount',
-                   'plazo_medio',
+                   'plazo_medio', "ind_rating", "ind_inv_grade"
                    ). \
             withColumn('exchange_rate', F.col('total_nominal_amount') / F.col('total_nominal_eur_amount')). \
             withColumn('Total_Amount_CCY', F.col('bbva_drawn_amount') + F.col('bbva_available_amount')). \
