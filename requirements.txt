@@ -1,3 +1,4 @@
 dataproc_sdk==0.4.7.3.1
 cryptography==3.4.8
 rubik==3.4.4
+grubik==0.2.8

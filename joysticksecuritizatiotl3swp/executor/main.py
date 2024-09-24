@@ -21,6 +21,7 @@ from joysticksecuritizatiotl3swp.read.entity_cat import EntityCatalogue
 from joysticksecuritizatiotl3swp.read.fx import FX
 from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import GuaranteesAndGuarantorsBuilder
 from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import GuaranteesAndGuarantorsLoader
+from joysticksecuritizatiotl3swp.read.esg_linked import ESGLinkedBuilder
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
 from joysticksecuritizatiotl3swp.read.securitizations import Securitizations
@@ -515,6 +516,15 @@ class SecuritizationProcess:  # pragma: no cover
             how="left",
         )
 
+        # ESG Linked flag:
+        esg_linked = ESGLinkedBuilder(self.logger, self.dataproc, date_reg_econ_capital.replace("-", ""),
+                                      contract_relations).build_esg_linked_flag()
+        ops_clan = ops_clan.join(
+            esg_linked,
+            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            how="left",
+        )
+
         # Risk Weight condition STS:
         ops_clan = ops_clan.withColumn('sts_sm_rw_condition', 100*F.col('gf_rw_sm_per') <= 100)\
             .fillna({'sts_sm_rw_condition': True})
@@ -561,7 +571,7 @@ class SecuritizationProcess:  # pragma: no cover
                    'gf_pf_current_ratg_id', 'gf_pf_score_ind_desc', 'gf_pf_final_lgd_amount', 'gf_pf_ratg_date',
                    'gf_current_rating_tool_date', 'g_smscl_internal_ratg_type', 'g_lmscl_internal_ratg_type',
                    'gf_facility_securitization_amount', 'bei_guaranteed_amount', 'non_bei_guaranteed_amount',
-                   'plazo_medio', "ind_rating", "ind_inv_grade"
+                   'plazo_medio', "ind_rating", "ind_inv_grade", "esg_linked"
                    ). \
             withColumn('exchange_rate', F.col('total_nominal_amount') / F.col('total_nominal_eur_amount')). \
             withColumn('Total_Amount_CCY', F.col('bbva_drawn_amount') + F.col('bbva_available_amount')). \
