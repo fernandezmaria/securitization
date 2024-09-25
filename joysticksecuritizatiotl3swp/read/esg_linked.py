@@ -8,6 +8,7 @@ from pyspark.sql import functions as F
 
 class ESGLinkedBuilder:
     """This class provides the ESG linked operations identifier."""
+
     def __init__(self, logger, dataproc, data_date, contract_relations):
         """
         Constructor
@@ -35,7 +36,3 @@ class ESGLinkedBuilder:
             .join(sust, on='g_contract_id', how='left') \
             .fillna(0, subset=['esg_linked'])
         return sust_operations
-
-
-
-
