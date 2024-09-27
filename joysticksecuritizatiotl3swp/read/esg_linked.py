@@ -34,5 +34,7 @@ class ESGLinkedBuilder:
             .select(F.lit(1).alias('esg_linked'), 'g_contract_id').distinct()
         sust_operations = self.contract_relations.filter(F.col('g_glob_contract_hier_lvl_type') == 'FACILITY') \
             .join(sust, on='g_contract_id', how='left') \
-            .fillna(0, subset=['esg_linked'])
+            .fillna(0, subset=['esg_linked'])\
+            .groupBy('delta_file_id', 'delta_file_band_id', 'branch_id')\
+            .agg(F.max('esg_linked').alias('esg_linked'))
         return sust_operations
