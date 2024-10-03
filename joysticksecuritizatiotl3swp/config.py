@@ -1,86 +1,76 @@
-import json
-import os
-import re
+import sys
 from typing import Dict
-from py4j.java_gateway import JavaObject
-from py4j.protocol import Py4JJavaError
+import os
+import json
+import re
 
 
-def get_params_from_runtime(runtimeContext: JavaObject, root_key: str) -> Dict:
+def _format_unknown_args(args: list):
     """
-    Returns parameters from pyspark context
-
-    Args:
-        runtimeContext: The pyspark context parameters
-        root_key: The key where params are setted
+    Returns parameters from args
 
     Returns:
-        The pyspark context parameters
+        The arguments variables as dict
     """
-    config = runtimeContext.getConfig()
 
-    if config.isEmpty():
-        return {}
-
-    try:
-        return {
-            param: config.getString(f"{root_key}.{param}")
-            for param in config.getObject(f"{root_key}")
-            if config.getString(f"{root_key}.{param}") != ""
-        }
-    except Py4JJavaError:
-        return {}
+    extraarguments = dict(zip(args[::2], args[1::2]))
+    return extraarguments
 
 
-def get_params_from_job_env(config_path: str) -> Dict:
+def get_params_from_args() -> Dict:
     """
-    Returns environment variables from os environment
-
-    Args:
-        config_path: The config file parameters
+    Returns argument variables
 
     Returns:
-        The environment variables found, empty if the configuration is empty
+        The argument variables found, empty if the configuration is empty
     """
-    env_params = {}  # Empty dictionary to add values into
 
-    OVERWRITE_SUFFIX = "_OVERWRITE"
+    args = sys.argv[1:]
+    params = _format_unknown_args(args)
+    print(f"Params: {params}")
+    PREFIX_REGEX = "^PARAM_"
+    arg_params = {}
+    for item, value in params.items():
+        if re.match(PREFIX_REGEX, item):
+            arg_var_original = re.sub(PREFIX_REGEX, "", item)
+            arg_params[arg_var_original] = value
 
-    for item, value in os.environ.items():
-        env_var = item.endswith(OVERWRITE_SUFFIX)
-        if env_var:
-            env_var_overwrite = "${?" + item + "}"
-            env_var_original = item.replace(OVERWRITE_SUFFIX, "")
-            with open(config_path, "r") as f:
-                content = f.read()
-                if env_var_overwrite in content:
-                    env_params[env_var_original] = value
-
-    return env_params
+    return arg_params
 
 
-def get_params_from_config(config_path: str) -> Dict:
+def get_params_from_env() -> Dict:
     """
-    Returns parameters from file
-
-    Args:
-        config_path: The config file parameters
+    Returns argument variables
 
     Returns:
-        The config file parameters
+        The argument variables found, empty if the configuration is empty
     """
-    pattern = re.compile("(\S*)\s*[:=]\s*\$\{\??(\S*)}")  # noqa: W605
-    parameters = {}
-    run_params = json.loads(os.getenv("RUN_PARAMS", "[{}]"))
 
-    for line in open(config_path).readlines():
-        match = re.search(pattern, line)
-        if match is not None:
-            env_param = str(run_params[0].get(match.group(2), ""))
-            if env_param is not None and env_param != "":
-                parameters[str(match.group(1)).replace("\"", "")] = env_param
+    params = dict(os.environ)
 
-    if not parameters:
-        parameters = get_params_from_job_env(config_path)
+    PREFIX_REGEX = "^PARAM_"
+    arg_params = {}
+    for item, value in params.items():
+        if re.match(PREFIX_REGEX, item):
+            arg_var_original = re.sub(PREFIX_REGEX, "", item)
+            arg_params[arg_var_original] = value
 
-    return parameters
+    return arg_params
+
+
+def get_params_from_hps() -> Dict:
+    """
+    Returns argument variables from hiperparameters
+
+    Returns:
+        The argument variables found, empty if the configuration is empty
+    """
+
+    args = dict(os.environ)
+    arg_params = {}
+    if "SM_HPS" in args.keys():
+        arg_params = json.loads(args['SM_HPS'])
+        if 'PACKAGE_NAME' in arg_params.keys():
+            arg_params.pop('PACKAGE_NAME')
+
+    return arg_params

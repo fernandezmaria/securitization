@@ -9,3 +9,11 @@ commit=
 
 [EXPERIMENT]
 commit=
+
+[PIPELINE_CONFIG]
+instance_type=
+instance_count=
+volume_size=
+docker_image=
+framework="generic"
+user_id="UNKNOWN"
