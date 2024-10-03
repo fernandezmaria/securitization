@@ -39,7 +39,9 @@ class DataprocExperiment:
         ret_code = 0
 
         try:
-            SecuritizationProcess(self.logger, spark, dataproc, parameters).execute_process()
+            SecuritizationProcess(
+                self.logger, spark, dataproc, parameters
+            ).execute_process()
 
         except Exception as exception:
             self.logger.error("Exception: %s" % exception)

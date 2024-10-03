@@ -7,8 +7,13 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window as W
 from rubik.load.markets import Markets
 
-from joysticksecuritizatiotl3swp.configurations.catalogues import mov_evol_saldos, listaMov, listaMov1, listaMov2, \
-    listaMov4
+from joysticksecuritizatiotl3swp.configurations.catalogues import (
+    mov_evol_saldos,
+    listaMov,
+    listaMov1,
+    listaMov2,
+    listaMov4,
+)
 
 
 class ItemsBalance:
@@ -61,9 +66,7 @@ class ItemsBalance:
         self.logger.info("data.balance_evolution")
 
         # FILTRO PARA EVOLUCION DE SALDOS
-        evol_saldos = items.where(
-            F.col("movement_class_name").isin(mov_evol_saldos)
-        )
+        evol_saldos = items.where(F.col("movement_class_name").isin(mov_evol_saldos))
 
         return evol_saldos.select(
             "delta_file_id",

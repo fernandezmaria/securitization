@@ -29,12 +29,19 @@ class ESGLinkedBuilder:
         """
         self.logger.info("ESGLinkedBuilder.build_esg_linked")
         # RBES sustainability mark assigned to ESG Linked according to SUST catalog in Taxonomy
-        sust = self.contract_sust_linked.get_contract_sust_linked(date=self.data_date) \
-            .filter(F.col('gf_sustainability_mark_id') == 'RBES')\
-            .select(F.lit(1).alias('esg_linked'), 'g_contract_id').distinct()
-        sust_operations = self.contract_relations.filter(F.col('g_glob_contract_hier_lvl_type') == 'FACILITY') \
-            .join(sust, on='g_contract_id', how='left') \
-            .fillna(0, subset=['esg_linked'])\
-            .groupBy('delta_file_id', 'delta_file_band_id', 'branch_id')\
-            .agg(F.max('esg_linked').alias('esg_linked'))
+        sust = (
+            self.contract_sust_linked.get_contract_sust_linked(date=self.data_date)
+            .filter(F.col("gf_sustainability_mark_id") == "RBES")
+            .select(F.lit(1).alias("esg_linked"), "g_contract_id")
+            .distinct()
+        )
+        sust_operations = (
+            self.contract_relations.filter(
+                F.col("g_glob_contract_hier_lvl_type") == "FACILITY"
+            )
+            .join(sust, on="g_contract_id", how="left")
+            .fillna(0, subset=["esg_linked"])
+            .groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            .agg(F.max("esg_linked").alias("esg_linked"))
+        )
         return sust_operations
