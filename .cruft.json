@@ -16,7 +16,7 @@
 "country": "GL",
 "uuaa": "dslb",
 "environment": "live",
-"entrypoint_uri": "s3://{bucket_infra}/datio_infra/{account_type}/sagemaker/entrypoints/{version}/runtrain.sh",
+"entrypoint_uri": "s3://{bucket_infra}/datio_infra/{version}/{account_type}/sagemaker/entrypoints/runtrain.sh",
 "aws_region": "eu-south-2"
 }
 },

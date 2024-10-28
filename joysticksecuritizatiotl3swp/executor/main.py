@@ -27,6 +27,7 @@ from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
 from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
     GuaranteesAndGuarantorsLoader,
 )
+from joysticksecuritizatiotl3swp.read.esg_linked import ESGLinkedBuilder
 from joysticksecuritizatiotl3swp.read.mcyg import Maestro
 from joysticksecuritizatiotl3swp.read.paths import Paths
 from joysticksecuritizatiotl3swp.read.securitizations import Securitizations
@@ -689,6 +690,13 @@ class SecuritizationProcess:  # pragma: no cover
             t_kctk_accredited, how="left", on="g_customer_id"
         ).join(t_kctk_cust_rating_atrb, how="left", on="g_customer_id")
 
+        # Convertimos la escala de ratings a numérica con el diccionario
+        ops_clan = ops_clan.withColumn(
+            "ind_rating", mapping_expr.getItem(F.col("g_lmscl_internal_ratg_type"))
+        ).withColumn(
+            "ind_inv_grade", F.when(F.col("ind_rating") <= "10", 1).otherwise(0)
+        )
+
         # Payment condition STS: At Least 1 Payment Made
         mvts = (
             Movements("/data", self.dataproc)
@@ -747,6 +755,19 @@ class SecuritizationProcess:  # pragma: no cover
         ).build_guaranteed_amounts()
         ops_clan = ops_clan.join(
             guaranteed_amounts,
+            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            how="left",
+        )
+
+        # ESG Linked flag:
+        esg_linked = ESGLinkedBuilder(
+            self.logger,
+            self.dataproc,
+            date_reg_econ_capital.replace("-", ""),
+            contract_relations,
+        ).build_esg_linked_flag()
+        ops_clan = ops_clan.join(
+            esg_linked,
             on=["delta_file_id", "delta_file_band_id", "branch_id"],
             how="left",
         )
@@ -847,6 +868,9 @@ class SecuritizationProcess:  # pragma: no cover
                 "bei_guaranteed_amount",
                 "non_bei_guaranteed_amount",
                 "plazo_medio",
+                "ind_rating",
+                "ind_inv_grade",
+                "esg_linked",
             )
             .withColumn(
                 "exchange_rate",
