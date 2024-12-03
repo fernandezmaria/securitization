@@ -128,35 +128,35 @@ listaMov4 = [
 ]
 
 limits_column_mapping = {'gf_loaded_limits_list_name': 'name_list_desc',
-                               'gf_loaded_limits_list_date': 'limit_date',
-                               'gf_loaded_limits_list_category_name': 'limit_type',
-                               'gf_first_concept_desc': 'concept1_desc',
-                               'gf_first_concept_id': 'concept1_value',
-                               'gf_second_concept_desc': 'concept2_desc',
-                               'gf_second_concept_id': 'concept2_value',
-                               'gf_assigned_limit_value_per': 'limit_value',
-                               'gf_corporate_loan_ind_type': 'corporate_loan_flag',
-                               'gf_project_finance_ind_type': 'project_finance_flag',
-                               'gf_securz_limit_portfolio_scope_id': 'limit_scope',
-                               'gf_process_active_limit_ind_type': 'active_flag',
-                               'gf_microstrategy_vslztn_order_ind_type': 'visual_order',
-                               'gf_complex_limit_ind_type': 'complex_limit'
-                               }
+                         'gf_loaded_limits_list_date': 'limit_date',
+                         'gf_loaded_limits_list_category_name': 'limit_type',
+                         'gf_first_concept_desc': 'concept1_desc',
+                         'gf_first_concept_id': 'concept1_value',
+                         'gf_second_concept_desc': 'concept2_desc',
+                         'gf_second_concept_id': 'concept2_value',
+                         'gf_assigned_limit_value_per': 'limit_value',
+                         'gf_corporate_loan_ind_type': 'corporate_loan_flag',
+                         'gf_project_finance_ind_type': 'project_finance_flag',
+                         'gf_securz_limit_portfolio_scope_id': 'limit_scope',
+                         'gf_process_active_limit_ind_type': 'active_flag',
+                         'gf_microstrategy_vslztn_order_ind_type': 'visual_order',
+                         'gf_complex_limit_ind_type': 'complex_limit'
+                         }
 
 facility_type = {'corporate_loan': 'Corporate Facilities', 'project_finance': 'Project Finance'}
 
 limits_snapshot = ['name_list_desc', 'limit_date']
 
 non_ig_limit = {
-            'corporate_loan': {'categoria': 'gf_ma_expanded_master_scale_id',
-                               'valor': 'ma_expanded_master_scale_number'},
-            'project_finance': {'categoria': 'g_lmscl_internal_ratg_type', 'valor': 'ind_rating'}}
-
+    'corporate_loan': {'categoria': 'gf_ma_expanded_master_scale_id',
+                       'valor': 'ma_expanded_master_scale_number'},
+    'project_finance': {'categoria': 'g_lmscl_internal_ratg_type', 'valor': 'ind_rating'}}
 
 limits_key_cols = ['limit_type', 'concept1_desc', 'concept1_value', 'concept2_desc', 'concept2_value',
-                         'corporate_loan_flag', 'project_finance_flag']
+                   'corporate_loan_flag', 'project_finance_flag']
 
-key_facility = ['delta_file_id','delta_file_band_id','branch_id']
+key_facility = ['delta_file_id', 'delta_file_band_id', 'branch_id']
+
 
 def get_countries_iso_name_table(spark):  # pragma: no cover
     """

@@ -1,8 +1,9 @@
 from datetime import timedelta
 
-from dataproc_sdk.dataproc_sdk_datiofilesystem.datiofilesystem import DatioFileSystem
 from dataproc_sdk.dataproc_sdk_catalog.datio_catalog import DatioCatalog
+from dataproc_sdk.dataproc_sdk_datiofilesystem.datiofilesystem import DatioFileSystem
 from pyspark.sql import functions as F, Window as W
+
 
 class Utilities:
 
@@ -31,7 +32,6 @@ class Utilities:
                 return pair.split('=')[1]
         return None
 
-
     @staticmethod
     def drop_duplicates(self, df):
         """
@@ -42,7 +42,6 @@ class Utilities:
         df = df.withColumn("rn", F.row_number().over(window)).where(F.col("rn") == 1).drop('rn')
 
         return df
-
 
     @staticmethod
     def get_fecha(fecha_ini: str, ndays: int, op: str = 'add'):

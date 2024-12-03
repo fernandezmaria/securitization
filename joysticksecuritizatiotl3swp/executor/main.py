@@ -923,7 +923,6 @@ class SecuritizationProcess:  # pragma: no cover
         # Portfolio optimizer
         # Save everythin in postgres
 
-
         self.logger.info(
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
         )

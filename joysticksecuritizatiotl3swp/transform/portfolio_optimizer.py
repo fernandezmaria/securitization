@@ -131,7 +131,8 @@ class PortfolioOptimizer:
         limites_ind = self.get_individual_limits(limites_total)
         dict_lim_ind_nul = self.get_individual_limits_with_null_values(limites_ind)
 
-        facilities_add = facilities_t1.withColumn('limits_applied', F.lit(''))  # tomamos de base las facilities y vamos añadiendo columnas y comprobaciones
+        facilities_add = facilities_t1.withColumn('limits_applied', F.lit(
+            ''))  # tomamos de base las facilities y vamos añadiendo columnas y comprobaciones
         varios_campos = 0  # partimos de la base que sólo afecta a un campo de Datio
 
         for k, v in dict_lim_ind.items():
@@ -158,7 +159,8 @@ class PortfolioOptimizer:
 
                 # limite según categoria - valor
                 else:
-                    facilities_add = facilities_add.join(df_limite1, [v], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                    facilities_add = facilities_add.join(df_limite1, [v], 'left').fillna(1.0).fillna(
+                        {'limit_apply': ''})
                     # valor del limite para columnas nulas
                     n0 = facilities_add.where(F.col(v).isNull()).count()
                     if (n0 > 0):  # si hay columnas nulas para ese campo
@@ -184,12 +186,14 @@ class PortfolioOptimizer:
                             df_limite2.select('limit_' + k).collect()[0]['limit_' + k]).cast("float")).withColumn(
                             'limit_apply', F.lit('limit_' + k))
                     else:
-                        facilities_add = facilities_add.join(df_limite2, [v2], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                        facilities_add = facilities_add.join(df_limite2, [v2], 'left').fillna(1.0).fillna(
+                            {'limit_apply': ''})
 
                 # limite según categoria - valor
                 else:
                     if ((df_limite2.count() == 1) & (df_limite2.select(v2).collect()[0][v2] == 'total')):
-                        facilities_add = facilities_add.join(df_limite2, [v1], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                        facilities_add = facilities_add.join(df_limite2, [v1], 'left').fillna(1.0).fillna(
+                            {'limit_apply': ''})
                     else:
                         facilities_add = facilities_add.join(df_limite2, [v1, v2], 'left').fillna(1.0).fillna({
                             'limit_apply': ''})
@@ -227,7 +231,6 @@ class PortfolioOptimizer:
         facilities_add_p = facilities_add.withColumn('imp_maximo_individual', F.lit(self.portfolio_size)
                                                      ).withColumn('limit_individual_p', F.lit(1.0))
 
-
         if (len(l_pr) > 0):
             for k in l_pr:
                 self.logger.info('limite con importe sujeto a portfolio size:', k)
@@ -248,7 +251,7 @@ class PortfolioOptimizer:
                 facilities_add_p = facilities_add_p.withColumn('imp_maximo_individual',
                                                                F.least(*[F.col('imp_maximo_' + x) for x in l_pr])
                                                                ).withColumn('limit_individual_p', F.least(
-                                                                *[F.col('limit_' + x) for x in l_pr]))
+                    *[F.col('limit_' + x) for x in l_pr]))
 
         facilities_tot = facilities_add_p.withColumn('limit_individual',
                                                      F.least(*[F.col(x).cast('float') for x in limits_indv])
@@ -290,7 +293,8 @@ class PortfolioOptimizer:
 
         df['selected'] = 0  # si se incluye en la cartera
         df['limit_portfolio'] = 1.0000  # limite más restrictivo a nivel portfolio
-        df['porcentaje_portfolio_size'] = 0.0000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
+        df[
+            'porcentaje_portfolio_size'] = 0.0000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
         df['importe_optimo'] = 0.0000  # importe que se incluye de la facility
         df['ranking_candidata'] = 0  # orden de prioridad en el modelo
         df['ranking_selected'] = 0  # orden de selección en la cartera final
@@ -301,10 +305,11 @@ class PortfolioOptimizer:
         # lo incluyo como columna el máximo importe a titulizar
         df['limit_portfolio_size'] = self.portfolio_size
 
-        consumption_cols = consumption_cols + ['selected', 'limit_portfolio', 'porcentaje_portfolio_size', 'importe_optimo',
-                     'ranking_candidata', 'ranking_selected', 'importe_optimo_acumulado',
-                     'porcentaje_portfolio_size_acumulado', 'porcentaje_optimo', 'limit_portfolio_size']
-
+        consumption_cols = consumption_cols + ['selected', 'limit_portfolio', 'porcentaje_portfolio_size',
+                                               'importe_optimo',
+                                               'ranking_candidata', 'ranking_selected', 'importe_optimo_acumulado',
+                                               'porcentaje_portfolio_size_acumulado', 'porcentaje_optimo',
+                                               'limit_portfolio_size']
 
         return consumption_cols, df
 
@@ -344,16 +349,13 @@ class PortfolioOptimizer:
 
                     dict_lim_values[k + '-' + str(k1)] = valor
 
-
         return consumed_limits_dict
-
 
     def build_appliable_limits(self, dict_lim_values, l_lim_consumidos):
         facilities_keys = list(l_lim_consumidos.keys())
         l_lim_marcados = {key: round(dict_lim_values[key], 4) for key in facilities_keys}
 
         return l_lim_marcados
-
 
     def build_max_limits(self, l_lim_marcados):
 
@@ -401,6 +403,7 @@ class PortfolioOptimizer:
         l_max_limites = {key: (l_lim_marcados[key] * float(self.portfolio_size)) for key in l_lim_marcados}
         return l_lim_consumidos, l_lim_marcados, l_max_limites
     """
+
     def get_keys_facility(self, i_facility, dataframe, dict_lim_port, cols_type):
         """
         Function that get's facility keys from dataframe.
@@ -445,11 +448,13 @@ class PortfolioOptimizer:
         lim_portfolio = list(dict_lim_port.keys())
 
         # limites globales: no complejos
-        lista1 = limit_port.select('limit_type', 'concept1_value', 'limit_value').where(F.col('complex_limit') == 0).collect()
+        lista1 = limit_port.select('limit_type', 'concept1_value', 'limit_value').where(
+            F.col('complex_limit') == 0).collect()
         dict_lim_values1 = {row['limit_type'] + '-' + row['concept1_value']: row['limit_value'] for row in lista1}
 
         # limites globales: complejos
-        lista2 = limit_port.select('limit_type', 'concept2_value', 'limit_value').where(F.col('complex_limit') == 1).collect()
+        lista2 = limit_port.select('limit_type', 'concept2_value', 'limit_value').where(
+            F.col('complex_limit') == 1).collect()
 
         dict_lim_values2 = {row['limit_type'] + '-' + row['concept2_value']: row['limit_value'] for row in lista2}
 
@@ -506,7 +511,7 @@ class PortfolioOptimizer:
                     disponible_proportion = 0.0000
 
                 df.loc[i, 'disponible_' + k] = disponible_proportion
-                min_lim = min(min_lim,disponible_proportion)
+                min_lim = min(min_lim, disponible_proportion)
 
             df.loc[i, 'limit_portfolio'] = min_portfolio
             df.loc[i, 'porcentaje_max_portfolio'] = min_lim
@@ -531,10 +536,10 @@ class PortfolioOptimizer:
                     # PASO_6: Actualizamos los acumulado tanto de limites como de importe a titulizar
                     importe_acumulado = importe_acumulado + importe_seleccionado
 
-                    por_consumido = round(float(importe_seleccionado / self.portfolio_size),7)
+                    por_consumido = round(float(importe_seleccionado / self.portfolio_size), 7)
 
                     for k, v in keys_f.items():
-                        l_lim_consumidos[v] = round(float(l_lim_consumidos[v] + por_consumido),7)
+                        l_lim_consumidos[v] = round(float(l_lim_consumidos[v] + por_consumido), 7)
                         l_importe_consumidos[v] = l_importe_consumidos[v] + importe_seleccionado
                         df.loc[i, 'consumido_' + k] = l_lim_consumidos[v]
                         df.loc[i, 'importe_consumido_' + k] = l_importe_consumidos[v]
@@ -543,10 +548,11 @@ class PortfolioOptimizer:
                     selected_facilities.append((i, por_consumido))
                     df.loc[i, 'selected'] = 1
                     df.loc[i, 'importe_optimo'] = importe_seleccionado
-                    df.loc[i, 'porcentaje_optimo'] = round(float(importe_seleccionado / df.loc[i, 'importe_susceptible']),7)
+                    df.loc[i, 'porcentaje_optimo'] = round(
+                        float(importe_seleccionado / df.loc[i, 'importe_susceptible']), 7)
                     df.loc[i, 'ranking_selected'] = len(selected_facilities)
                     df.loc[i, 'importe_optimo_acumulado'] = importe_acumulado
-                    porcentaje_portfolio_size_acumulado = round(float(importe_acumulado / self.portfolio_size),7)
+                    porcentaje_portfolio_size_acumulado = round(float(importe_acumulado / self.portfolio_size), 7)
                     df.loc[i, 'porcentaje_portfolio_size_acumulado'] = porcentaje_portfolio_size_acumulado
                     df.loc[i, 'porcentaje_portfolio_size'] = por_consumido
 

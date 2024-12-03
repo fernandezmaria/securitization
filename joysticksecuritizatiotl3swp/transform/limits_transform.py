@@ -16,17 +16,17 @@ class LimitsTransform:
         self.key_cols = limits_key_cols
 
     def get_date(date: str):
-        if (date != None):
-            l = re.findall(r'\d+', date)
-            if (len(l) == 3):
-                if (len(l[0]) == 4):
-                    p_year = l[0]
-                    p_month = l[1]
-                    p_day = l[2]
+        if date is not None:
+            dates = re.findall(r'\d+', date)
+            if (len(dates) == 3):
+                if (len(dates[0]) == 4):
+                    p_year = dates[0]
+                    p_month = dates[1]
+                    p_day = dates[2]
                 else:
-                    p_day = l[0]
-                    p_month = l[1]
-                    p_year = l[2]
+                    p_day = dates[0]
+                    p_month = dates[1]
+                    p_year = dates[2]
                 return p_day + '-' + p_month + '-' + p_year
             else:
                 return None
@@ -60,18 +60,19 @@ class LimitsTransform:
         sts_flag = sts_limits[0].concept1_value
         col_sts = sts_limits[0].concept1_desc
 
-        #TODO: optimizar esta parte, es redundante? Revisar con Elia
         if (sts_flag == '1'):
             self.logger.info('Titulización con cumplimiento STS')
-            limits_current = limits_active.where(((F.col('concept1_value') != col_sts) |((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
-            )
+            limits_current = limits_active.where(((F.col('concept1_value') != col_sts) | (
+                (F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
+                                                 )
         else:
             self.logger.info('Titulización sin cumplimiento STS')
             sts_limites = limits_active.where(((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
             if (sts_limites.count() > 0):
                 limits_current = limits_active.join(sts_limites, ['id_limit'], 'lefanti')
             else:
-                sts_limites = limits_active.where(((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
+                sts_limites = limits_active.where(
+                    ((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
                 if (sts_limites.count() > 0):
                     limits_current = limits_active.join(sts_limites, ['id_limit'], 'lefanti')
                 else:

@@ -28,9 +28,7 @@ class SecuritizationUtils:
     def cast_facilities_df(cols_type, facilities_pandas_df):
         # listado de: columna - tipo de dato
 
-
         # en formato diccionario
-
 
         for r in facilities_pandas_df.columns:
             if (cols_type[r] == 'string'):

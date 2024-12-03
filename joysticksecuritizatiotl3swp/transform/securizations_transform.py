@@ -5,12 +5,14 @@ from joysticksecuritizatiotl3swp.configurations.catalogues import non_ig_limit
 from joysticksecuritizatiotl3swp.read.catalogue_sector_project import CatalogueSectorProjectLoader
 from joysticksecuritizatiotl3swp.read.paths import Paths
 from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from notebooks.joysticksecuritizatiotl3swp.utils.algorithm_utils import SecuritizationUtils
 
 
 class SecurizationsTransform:
     """
     Class to transform securizations data for algorithm usage.
     """
+
     def __init__(self, dataproc, parameters, data_date, limits_df):
         """
         Constructor
@@ -21,8 +23,9 @@ class SecurizationsTransform:
         self.paths = Paths(parameters=self.parameters)
         self.limits_df = limits_df
 
-        self.securization_type = Utilities.get_securization_type(limits_df)
-        self.catalogue_sector_project_df = CatalogueSectorProjectLoader(dataproc, parameters).read_catalogue_sector_project_relation()
+        self.securization_type = SecuritizationUtils.get_securization_type(limits_df)
+        self.catalogue_sector_project_df = CatalogueSectorProjectLoader(dataproc,
+                                                                        parameters).read_catalogue_sector_project_relation()
         self.path_ci = self.paths.path_ci
         self.raw_ci_df = self.dataproc.read().parquet(self.path_ci)
         self.ci_date_field = "gf_cutoff_date"
@@ -47,9 +50,10 @@ class SecurizationsTransform:
         """
         Build securizations for algorithm.
         """
-        securizations_for_algorithm_df = securizations_df.withColumn('project_sector_desc', F.trim('project_sector_desc')
-                                                           ).join(self.catalogue_sector_project_df,
-                                                                  ['project_sector_desc'], 'left').fillna(
+        securizations_for_algorithm_df = securizations_df.withColumn('project_sector_desc',
+                                                                     F.trim('project_sector_desc')
+                                                                     ).join(self.catalogue_sector_project_df,
+                                                                            ['project_sector_desc'], 'left').fillna(
             'No Informado')
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('ico_flag', F.when(
@@ -66,22 +70,26 @@ class SecurizationsTransform:
             ((F.col(col_rating_pos) >= n_rating) & (~(F.col(col_rating_categ).like('BBB%')))), 1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('building_project_flag',
-                                                               F.when(F.trim(F.col('gf_pf_project_const_type')) == 'S',
-                                                                      1).otherwise(0))
+                                                                                   F.when(F.trim(F.col(
+                                                                                       'gf_pf_project_const_type')) == 'S',
+                                                                                          1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('workout_flag', F.when(
             F.trim(F.col('watch_list_clasification_type')) != 0, 1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('sts_payment_flag',
-                                                               F.when(F.col('sts_payment_condition') == 'true',
-                                                                      1).otherwise(0))
+                                                                                   F.when(F.col(
+                                                                                       'sts_payment_condition') == 'true',
+                                                                                          1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('sts_sm_rw_flag',
-                                                               F.when(F.col('sts_sm_rw_condition') == 'true',
-                                                                      1).otherwise(0))
+                                                                                   F.when(F.col(
+                                                                                       'sts_sm_rw_condition') == 'true',
+                                                                                          1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('esg_linked_flag',
-                                                               F.when(F.col('esg_linked') == 1, 1).otherwise(0))
+                                                                                   F.when(F.col('esg_linked') == 1,
+                                                                                          1).otherwise(0))
 
         securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('bei_flag', F.when(
             ((F.col('bei_guaranteed_amount') != 0) & (F.col('bei_guaranteed_amount').isNotNull())), 1).otherwise(0))
@@ -91,11 +99,11 @@ class SecurizationsTransform:
 
     def build_constants_df(self, limits_df, securizations_df):
         constants_df = limits_df.where(F.col('limit_type') == 'constant_type'
-                                        ).select(F.col('concept1_desc').alias('constant_type'),
-                                                 F.col('limit_value').alias('constant_value'))
+                                       ).select(F.col('concept1_desc').alias('constant_type'),
+                                                F.col('limit_value').alias('constant_value'))
 
         lgd = securizations_df.agg(F.avg(F.col("adj_lgd_ma_mitig_per")).cast('float').alias('lgd')
-                                            ).collect()[0].lgd
+                                   ).collect()[0].lgd
 
         ci_ratio = self.build_ci_df().where(F.trim(F.col('gf_head_office_desc')) == 'ESPAÑA'
                                             ).select(F.col('gf_customer_contract_control_per').cast('float')
@@ -109,7 +117,7 @@ class SecurizationsTransform:
         ]
 
         hardcoded_constants_df = self.dataproc.getSparkSession().createDataFrame(hardcoded_constants_list)
-        constants_final_df = hardcoded_constants_df.union(constants_df).withColumn('closing_date', F.lit(self.data_date))
+        constants_final_df = hardcoded_constants_df.union(constants_df).withColumn('closing_date',
+                                                                                   F.lit(self.data_date))
 
-        return constants_final_df ## ESCRIBIRLO EN POSTGRES
-
+        return constants_final_df  ## ESCRIBIRLO EN POSTGRES
