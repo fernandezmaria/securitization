@@ -42,12 +42,16 @@ class LimitsLoader:
         self.logger.info(f"Reading limit launchpad data for date {data_date}")
 
         # TODO: Cuando el launchpad este disponible, cambiar por la tabla que se ingesta en master.
-        limits_df = self.dataproc.read().option("delimiter", ",").option("header", "True").option(
-            "inferSchema", "True").csv(f"{self.limits_path}/{self.limits_date_field}={data_date}")
+        limits_df = (
+            self.dataproc.read().option("delimiter", ",").option("header", "True").option("inferSchema", "True")
+            .csv(f"{self.limits_path}/{self.limits_date_field}={data_date}")
+        )
 
-        limits_df = self.rename_columns(limits_df).withColumn(
-            'limit_value', F.regexp_replace(
-                'limit_value', ',', '.'
+        limits_df = (
+            self.rename_columns(limits_df)
+            .withColumn(
+                'limit_value',
+                F.regexp_replace('limit_value', ',', '.')
             )
         )
 
@@ -57,11 +61,16 @@ class LimitsLoader:
         """
         Read the relation between limit fields and datio fields last available date..
         """
-        last_date_available = Utilities.get_last_value_partition_table(self.limits_datio_field_mapping_table,
-                                                                       self.limits_datio_field_mapping_date_field)
+        last_date_available = (
+            Utilities.get_last_value_partition_table(
+                self.limits_datio_field_mapping_table,
+                self.limits_datio_field_mapping_date_field)
+        )
 
-        limit_field_relation_df = self.dataproc.read().table(self.limits_datio_field_mapping_table).filter(
-            F.col(self.limits_datio_field_mapping_date_field) == last_date_available)
+        limit_field_relation_df = (
+            self.dataproc.read().table(self.limits_datio_field_mapping_table)
+            .filter(F.col(self.limits_datio_field_mapping_date_field) == last_date_available)
+        )
 
         self.logger.info(f"Read limit field relation for last available date {last_date_available}")
 

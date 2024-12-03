@@ -29,9 +29,11 @@ class CatalogueSectorProjectLoader:
         last_date_available = Utilities.get_last_value_partition_table(self.sector_project_catalogue_table,
                                                                        self.sector_project_catalogue_date_field)
 
-        catalogue_sector_project_df = (self.dataproc.read().table(self.sector_project_catalogue_table).
-                                       filter(F.col(self.sector_project_catalogue_date_field) == last_date_available).
-                                       withColumn('project_sector_desc', F.trim('project_sector_desc')))
+        catalogue_sector_project_df = (
+            self.dataproc.read().table(self.sector_project_catalogue_table)
+            .filter(F.col(self.sector_project_catalogue_date_field) == last_date_available)
+            .withColumn('project_sector_desc', F.trim('project_sector_desc'))
+        )
 
         self.logger.info(f"Read sector project relation for last available date {last_date_available}")
 

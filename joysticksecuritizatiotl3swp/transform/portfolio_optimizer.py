@@ -36,10 +36,11 @@ class PortfolioOptimizer:
         """
         Get the limit value from the limits DataFrame.
         """
-        limit_value_df = limits_df.withColumn('limit_value',
-                                              F.when(F.col('limit_type') == 'risk_retention',
-                                                     (F.lit(1) - F.col('limit_value')).cast('float')
-                                                     ).otherwise(F.col('limit_value')))
+        limit_value_df = limits_df.withColumn(
+            'limit_value',
+            F.when(
+                F.col('limit_type') == 'risk_retention',(F.lit(1) - F.col('limit_value')).cast('float')
+             ).otherwise(F.col('limit_value')))
 
         return limit_value_df
 
@@ -47,16 +48,27 @@ class PortfolioOptimizer:
         """
         Calculate the total limits from the limits DataFrame filtering by securitization type.
         """
-        field_relation_df = self.limit_field_relation.drop('corporate_loan_column'
-                                                           ).withColumnRenamed('project_finance_column', 'campo_datio')
-        if self.securization_type == 'corporate_loan':
-            field_relation_df = self.limit_field_relation.drop('project_finance_column'
-                                                               ).withColumnRenamed('corporate_loan_column',
-                                                                                   'campo_datio')
+        field_relation_df = (self.limit_field_relation.drop('corporate_loan_column').
+                             withColumnRenamed('project_finance_column','campo_datio'))
 
-        total_limits_df = limits_df.join(field_relation_df, ['limit_type'], 'left').dropDuplicates().withColumn(
-            'imp_limit',
-            F.when(F.col('imp_limit') == 'limit_scope', F.col('limit_scope')).otherwise(F.col('imp_limit')))
+        if self.securization_type == 'corporate_loan':
+            field_relation_df = self.limit_field_relation.drop(
+                'project_finance_column'
+            ).withColumnRenamed(
+                'corporate_loan_column',
+                'campo_datio'
+            )
+
+        total_limits_df = (
+            limits_df.join(
+                field_relation_df, ['limit_type'], 'left'
+            )
+            .dropDuplicates()
+            .withColumn(
+                'imp_limit',
+                F.when(F.col('imp_limit') == 'limit_scope', F.col('limit_scope')).otherwise(F.col('imp_limit'))
+            )
+        )
 
         return total_limits_df
 
@@ -64,10 +76,14 @@ class PortfolioOptimizer:
         """
         Build the facilities DataFrame filtering by securitization type.
         """
-        facilities_filtered_by_type_df = facilities_df.where(
-            F.col('com_product') == self.facility_type_dict[self.securization_type]).withColumn('excluded', F.lit(0)
-                                                                                                ).withColumn(
-            'exclusion_limit', F.lit(''))
+        facilities_filtered_by_type_df = (
+            facilities_df.where(
+                F.col('com_product') == self.facility_type_dict[self.securization_type]
+            )
+            .withColumn('excluded', F.lit(0))
+            .withColumn('exclusion_limit', F.lit(''))
+        )
+
         return facilities_filtered_by_type_df
 
     def build_portfolio_size(self, total_limits_df):
@@ -94,8 +110,8 @@ class PortfolioOptimizer:
         return individual_limits_df
 
     def get_individual_limits_with_null_values(self, individual_limits_df):
-        l = individual_limits_df.select('limit_type', 'null_values').collect()
-        dict_lim_ind_nul = {row['limit_type']: row['null_values'] for row in l}
+        limit_types_null_list = individual_limits_df.select('limit_type', 'null_values').collect()
+        dict_lim_ind_nul = {row['limit_type']: row['null_values'] for row in limit_types_null_list}
         return dict_lim_ind_nul
 
     def build_individual_limits_list(self, dict_lim_ind):
@@ -107,33 +123,46 @@ class PortfolioOptimizer:
         # Limites necesarios
         lim_imp = ['risk_retention', 'ccf']
 
-        limits_list = [(x.limit_type, x.limit_value) for x in
-                       limites_total.select('limit_type', 'limit_value').where(
-                           F.col('limit_type').isin(*lim_imp)).collect()]
+        limits_list = [
+            (x.limit_type, x.limit_value)
+            for x in limites_total.select('limit_type', 'limit_value')
+                .where(F.col('limit_type').isin(*lim_imp)).collect()
+        ]
 
-        facilities_t1 = facilities_t.withColumn('limit_escenario', F.lit(self.securitization_escenario)).withColumn(
+        facilities_t1 = facilities_t.withColumn(
+            'limit_escenario',
+            F.lit(self.securitization_escenario)
+        ).withColumn(
             'limit_fecha',
-            F.lit(self.securitization_date))
+            F.lit(self.securitization_date)
+        )
 
         for e in limits_list:
             facilities_t1 = facilities_t1.withColumn('limit_' + e[0], F.lit(e[1]))
 
         # Calculamos el importe
-        facilities_t1 = facilities_t1.withColumn('importe1', F.col('bbva_drawn_eur_amount') + (
-            F.col('bbva_available_eur_amount') * F.col('limit_ccf'))).withColumn('importe2', F.col(
-            'gf_facility_securitization_amount') / F.col('limit_risk_retention')).withColumn('importe_susceptible',
-                                                                                             F.least(F.col(
-                                                                                                 'gf_ma_ead_amount'),
-                                                                                                 F.col(
-                                                                                                     'importe1')) - F.col(
-                                                                                                 'importe2'))
+        facilities_t1 = (
+            facilities_t1
+                .withColumn(
+                    'importe1',
+                    F.col('bbva_drawn_eur_amount')
+                    +(F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
+                )
+                .withColumn(
+                    'importe2',
+                    F.col('gf_facility_securitization_amount') / F.col('limit_risk_retention')
+                )
+                .withColumn(
+                    'importe_susceptible',
+                    F.least(F.col('gf_ma_ead_amount'),F.col('importe1')) - F.col('importe2')
+                )
+        )
 
         limites_ind = self.get_individual_limits(limites_total)
         dict_lim_ind_nul = self.get_individual_limits_with_null_values(limites_ind)
 
-        facilities_add = facilities_t1.withColumn('limits_applied', F.lit(
-            ''))  # tomamos de base las facilities y vamos añadiendo columnas y comprobaciones
-        varios_campos = 0  # partimos de la base que sólo afecta a un campo de Datio
+        facilities_add = facilities_t1.withColumn('limits_applied', F.lit(''))
+        varios_campos = 0
 
         for k, v in dict_lim_ind.items():
             self.logger.info(f"Analysed individual limit: {k}")
@@ -144,80 +173,117 @@ class PortfolioOptimizer:
 
             # CASO BASE: casi todos lo límites aplican a un solo campo
             if (varios_campos == 0):
-                df_limite1 = limites_ind.where(F.col('limit_type') == k
-                                               ).withColumn('concepto_valor', F.when(F.col('complex_limit') == 1,
-                                                                                     F.col('concept2_value')).otherwise(
-                    F.col('concept1_value'))).select('concepto_valor', 'limit_value').withColumnRenamed(
-                    'concepto_valor', v).withColumnRenamed('limit_value', 'limit_' + k).withColumn('limit_' + k, F.col(
-                    'limit_' + k).cast("float")).withColumn('limit_apply', F.lit('limit_' + k))
+                df_limite1 = (
+                    limites_ind.where(F.col('limit_type') == k).withColumn(
+                            'concepto_valor',
+                            F.when(F.col('complex_limit') == 1, F.col('concept2_value'))
+                            .otherwise(F.col('concept1_value'))
+                    )
+                    .select('concepto_valor', 'limit_value')
+                    .withColumnRenamed('concepto_valor', v)
+                    .withColumnRenamed('limit_value', 'limit_' + k)
+                    .withColumn('limit_' + k, F.col('limit_' + k).cast("float"))
+                    .withColumn('limit_apply', F.lit('limit_' + k))
+                )
 
                 # limite generico para todas las facilities
                 if ((df_limite1.count() == 1) & (df_limite1.select(v).collect()[0][v] == 'total')):
-                    facilities_add = facilities_add.withColumn('limit_' + k, F.lit(
-                        df_limite1.select('limit_' + k).collect()[0]['limit_' + k]).cast("float")).withColumn(
-                        'limit_apply', F.lit('limit_' + k))
+                    facilities_add = (
+                        facilities_add.withColumn(
+                            'limit_' + k,
+                            F.lit(df_limite1.select('limit_' + k).collect()[0]['limit_' + k]).cast("float")
+                        )
+                        .withColumn(
+                            'limit_apply',
+                            F.lit('limit_' + k)
+                        )
+                    )
 
                 # limite según categoria - valor
                 else:
-                    facilities_add = facilities_add.join(df_limite1, [v], 'left').fillna(1.0).fillna(
-                        {'limit_apply': ''})
+                    facilities_add = (
+                        facilities_add.join(
+                            df_limite1,
+                            [v],
+                            'left'
+                        ).fillna(1.0).fillna({'limit_apply': ''})
+                    )
                     # valor del limite para columnas nulas
                     n0 = facilities_add.where(F.col(v).isNull()).count()
                     if (n0 > 0):  # si hay columnas nulas para ese campo
-                        facilities_add = facilities_add.withColumn('limit_' + k, F.when(F.col(v).isNull(),
-                                                                                        dict_lim_ind_nul[k]).otherwise(
-                            F.col('limit_' + k)))
+                        facilities_add = (
+                            facilities_add.withColumn(
+                                'limit_' + k,
+                                F.when(F.col(v).isNull(),dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
+                            )
+                        )
 
             # Limit applied to several fields
             else:
                 v1, v2 = v.split('/')
 
-                df_limite2 = limites_ind.where(F.col('limit_type') == k).select('concept1_value', 'concept2_value',
-                                                                                'limit_value').withColumnRenamed(
-                    'concept1_value', v1).withColumnRenamed('concept2_value', v2).withColumnRenamed('limit_value',
-                                                                                                    'limit_' + k).withColumn(
-                    'limit_' + k, F.col('limit_' + k).cast("float")).withColumn('limit_apply', F.lit('limit_' + k))
+                df_limite2 = (
+                    limites_ind.where(
+                        F.col('limit_type') == k
+                    )
+                    .select('concept1_value', 'concept2_value','limit_value')
+                    .withColumnRenamed('concept1_value', v1)
+                    .withColumnRenamed('concept2_value', v2)
+                    .withColumnRenamed('limit_value','limit_' + k)
+                    .withColumn('limit_' + k, F.col('limit_' + k).cast("float"))
+                    .withColumn('limit_apply', F.lit('limit_' + k))
+                )
 
                 # limite generico para todas las facilities
-                if ((df_limite2.count() == 1) & (df_limite2.select(v1).collect()[0][v1] == 'total')):
+                if (df_limite2.count() == 1) & (df_limite2.select(v1).collect()[0][v1] == 'total'):
 
-                    if ((df_limite2.count() == 1) & (df_limite2.select(v2).collect()[0][v2] == 'total')):
-                        facilities_add = facilities_add.withColumn('limit_' + k, F.lit(
-                            df_limite2.select('limit_' + k).collect()[0]['limit_' + k]).cast("float")).withColumn(
-                            'limit_apply', F.lit('limit_' + k))
+                    if (df_limite2.count() == 1) & (df_limite2.select(v2).collect()[0][v2] == 'total'):
+                        facilities_add = (
+                            facilities_add.withColumn(
+                                'limit_' + k,
+                                F.lit(df_limite2.select('limit_' + k).collect()[0]['limit_' + k]).cast("float"))
+                            .withColumn('limit_apply', F.lit('limit_' + k))
+                        )
                     else:
-                        facilities_add = facilities_add.join(df_limite2, [v2], 'left').fillna(1.0).fillna(
-                            {'limit_apply': ''})
+                        facilities_add = (
+                            facilities_add.join(df_limite2, [v2], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                        )
 
                 # limite según categoria - valor
                 else:
-                    if ((df_limite2.count() == 1) & (df_limite2.select(v2).collect()[0][v2] == 'total')):
-                        facilities_add = facilities_add.join(df_limite2, [v1], 'left').fillna(1.0).fillna(
-                            {'limit_apply': ''})
+                    if (df_limite2.count() == 1) & (df_limite2.select(v2).collect()[0][v2] == 'total'):
+                        facilities_add = (
+                            facilities_add.join(df_limite2, [v1], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                        )
                     else:
-                        facilities_add = facilities_add.join(df_limite2, [v1, v2], 'left').fillna(1.0).fillna({
-                            'limit_apply': ''})
+                        facilities_add = (
+                            facilities_add.join(df_limite2, [v1, v2], 'left').fillna(1.0).fillna({'limit_apply': ''})
+                        )
 
                         n1 = facilities_add.where(F.col(v2).isNull()).count()
-                        if (n1 > 0):  # si hay valores nulos para la columna v2
-                            print('facilities con columna:', v2, 'nula:',
-                                  facilities_add.where(F.col(v2).isNull()).count())
-                            print('% de limite', k, 'para estas facilities:', dict_lim_ind_nul[k])
-                            facilities_add = facilities_add.withColumn('limit_' + k, F.when(F.col(v2).isNull(),
-                                                                                            dict_lim_ind_nul[
-                                                                                                k]).otherwise(
-                                F.col('limit_' + k)))  # pongo el limite establecido para las columnas nulas
+                        if n1 > 0:  # si hay valores nulos para la columna v2
+                            facilities_add = (
+                                facilities_add.withColumn(
+                                    'limit_' + k,
+                                    F.when(F.col(v2).isNull(),dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
+                                )
+                            )
 
             # añadimos al campo de limites aplicados el procesado que vendrá con valor cuando los limites han coincidido
-            facilities_add = facilities_add.withColumn('limits_applied', F.when(F.col('limit_apply') != '',
-                                                                                F.concat(F.col('limits_applied'),
-                                                                                         F.lit(','), F.col(
-                                                                                        'limit_apply'))).otherwise(
-                F.col('limits_applied'))).drop('limit_apply').withColumn('exclusion_limit',
-                                                                         F.when(F.col('limit_' + k) == 0,
-                                                                                F.concat(F.lit(k), F.lit(', '), F.col(
-                                                                                    'exclusion_limit'))).otherwise(
-                                                                             F.col('exclusion_limit')))
+            facilities_add = (
+                facilities_add.withColumn(
+                    'limits_applied',
+                    F.when(F.col('limit_apply') != '',F.concat(F.col('limits_applied'),F.lit(','), F.col('limit_apply'))
+                    )
+                    .otherwise(F.col('limits_applied'))
+                )
+                .drop('limit_apply')
+                .withColumn(
+                    'exclusion_limit',
+                    F.when(F.col('limit_' + k) == 0,F.concat(F.lit(k), F.lit(', '), F.col('exclusion_limit')))
+                    .otherwise(F.col('exclusion_limit'))
+                )
+            )
 
             varios_campos = 0
 
@@ -228,8 +294,13 @@ class PortfolioOptimizer:
                 limites_ind.where(F.col('imp_limit') != 'individual').select('limit_type').distinct().collect()]
 
         dict_lim_ind_p = {}
-        facilities_add_p = facilities_add.withColumn('imp_maximo_individual', F.lit(self.portfolio_size)
-                                                     ).withColumn('limit_individual_p', F.lit(1.0))
+        facilities_add_p = (
+            facilities_add.withColumn(
+                'imp_maximo_individual',
+                F.lit(self.portfolio_size)
+            )
+            .withColumn('limit_individual_p', F.lit(1.0))
+        )
 
         if (len(l_pr) > 0):
             for k in l_pr:
@@ -239,42 +310,63 @@ class PortfolioOptimizer:
 
                 if ('limit_' + k in limits_indv):
                     limits_indv.remove('limit_' + k)  # quitamos del cálculo del minimo limite individual
-                facilities_add_p = facilities_add_p.withColumn('imp_maximo_' + k,
-                                                               (F.col('limit_' + k) * self.portfolio_size).cast(
-                                                                   "float"))  # calculo ese importe máximo
+
+                facilities_add_p = (
+                    facilities_add_p.withColumn(
+                        'imp_maximo_' + k,
+                        (F.col('limit_' + k) * self.portfolio_size).cast("float")
+                    )
+                )  # calculo ese importe máximo
 
             if (len(l_pr) == 1):
-                print('solo un limite individual con limite de importe portfolio')
-                facilities_add_p = facilities_add_p.withColumn('imp_maximo_individual', F.col('imp_maximo_' + k)
-                                                               ).withColumn('limit_individual_p', F.col('limit_' + k))
+                self.logger.info('Solo un limite individual con limite de importe portfolio')
+                facilities_add_p = (
+                    facilities_add_p.withColumn(
+                        'imp_maximo_individual', F.col('imp_maximo_' + k)
+                    )
+                    .withColumn('limit_individual_p', F.col('limit_' + k))
+                )
             else:
-                facilities_add_p = facilities_add_p.withColumn('imp_maximo_individual',
-                                                               F.least(*[F.col('imp_maximo_' + x) for x in l_pr])
-                                                               ).withColumn('limit_individual_p', F.least(
-                    *[F.col('limit_' + x) for x in l_pr]))
+                facilities_add_p = (
+                    facilities_add_p.withColumn(
+                        'imp_maximo_individual',
+                        F.least(*[F.col('imp_maximo_' + x) for x in l_pr])
+                    )
+                    .withColumn('limit_individual_p', F.least(*[F.col('limit_' + x) for x in l_pr]))
+                )
 
-        facilities_tot = facilities_add_p.withColumn('limit_individual',
-                                                     F.least(*[F.col(x).cast('float') for x in limits_indv])
-                                                     ).withColumn('importe_titulizable_ini',
-                                                                  F.col('importe_susceptible') * F.col(
-                                                                      'limit_individual')
-                                                                  ).withColumn('importe_titulizable', F.when(
-            F.col('importe_titulizable_ini') <= F.col('imp_maximo_individual'), F.col('importe_titulizable_ini')
-        ).otherwise(F.col('imp_maximo_individual'))
-                                                                               ).withColumn('excluded', F.when(
-            ((F.col('limit_individual') == 0) | (F.col('imp_maximo_individual') <= 0)), 1).otherwise(F.col('excluded'))
-                                                                                            ).withColumn('candidata',
-                                                                                                         F.when(F.col(
-                                                                                                             'importe_titulizable') > 0,
-                                                                                                                1).otherwise(
-                                                                                                             0))
+        facilities_tot = (
+            facilities_add_p.withColumn(
+                'limit_individual',F.least(*[F.col(x).cast('float') for x in limits_indv])
+            ).withColumn('importe_titulizable_ini',F.col('importe_susceptible') * F.col('limit_individual'))
+            .withColumn(
+                'importe_titulizable',
+                F.when(
+                    F.col('importe_titulizable_ini') <= F.col('imp_maximo_individual'),
+                    F.col('importe_titulizable_ini')
+                ).otherwise(F.col('imp_maximo_individual'))
+            ).withColumn(
+                'excluded',
+                F.when(
+                    ((F.col('limit_individual') == 0) | (F.col('imp_maximo_individual') <= 0)), 1
+                )
+                .otherwise(F.col('excluded'))
+            ).withColumn('candidata',F.when(F.col('importe_titulizable') > 0,1).otherwise(0))
+        )
 
-        facilities_tr = facilities_tot.withColumn('motivo_exclusion',
-                                                  F.when(F.col('excluded') == 1, 'limite individual 0'
-                                                         ).when(F.col('importe_susceptible') <= 0,
-                                                                'importe susceptible 0'
-                                                                ).otherwise('NA')
-                                                  ).withColumn('detalle_exclusion', F.col('exclusion_limit'))
+        facilities_tr = (
+            facilities_tot.withColumn(
+                'motivo_exclusion',
+                F.when(
+                    F.col('excluded') == 1,
+                    'limite individual 0'
+                ).when(
+                    F.col('importe_susceptible') <= 0,
+                    'importe susceptible 0'
+                ).otherwise('NA')
+            )
+            .withColumn('detalle_exclusion', F.col('exclusion_limit'))
+        )
 
         return facilities_tr
 
@@ -431,16 +523,24 @@ class PortfolioOptimizer:
         """
 
         # Building pk for algorithm ordering.
-        facilities_disponibles = facilities_disponibles.withColumn('pk_engine',
-                                                                   F.concat(facilities_disponibles.delta_file_id,
-                                                                            F.lit('_'),
-                                                                            facilities_disponibles.delta_file_band_id,
-                                                                            F.lit('_'),
-                                                                            facilities_disponibles.branch_id))
+        facilities_disponibles = (
+            facilities_disponibles.withColumn(
+                'pk_engine',
+                F.concat(
+                    facilities_disponibles.delta_file_id,
+                    F.lit('_'),
+                    facilities_disponibles.delta_file_band_id,
+                    F.lit('_'),
+                    facilities_disponibles.branch_id)
+            )
+        )
 
-        limit_port = limites_total.where(F.col('limit_scope') == 'portfolio'
-                                         ).where(F.col('header_flag') == 0
-                                                 ).where(F.col('limit_type') != 'sts')
+        limit_port = (
+            limites_total.where(
+                F.col('limit_scope') == 'portfolio')
+            .where(F.col('header_flag') == 0)
+            .where(F.col('limit_type') != 'sts')
+        )
 
         lista = limit_port.select('limit_type', 'campo_datio').collect()
         dict_lim_port = {row['limit_type']: row['campo_datio'] for row in lista}
@@ -448,13 +548,19 @@ class PortfolioOptimizer:
         lim_portfolio = list(dict_lim_port.keys())
 
         # limites globales: no complejos
-        lista1 = limit_port.select('limit_type', 'concept1_value', 'limit_value').where(
-            F.col('complex_limit') == 0).collect()
+        lista1 = (
+            limit_port.select(
+                'limit_type', 'concept1_value', 'limit_value')
+            .where(F.col('complex_limit') == 0).collect()
+        )
         dict_lim_values1 = {row['limit_type'] + '-' + row['concept1_value']: row['limit_value'] for row in lista1}
 
         # limites globales: complejos
-        lista2 = limit_port.select('limit_type', 'concept2_value', 'limit_value').where(
-            F.col('complex_limit') == 1).collect()
+        lista2 = (
+            limit_port
+            .select('limit_type', 'concept2_value', 'limit_value')
+            .where(F.col('complex_limit') == 1).collect()
+        )
 
         dict_lim_values2 = {row['limit_type'] + '-' + row['concept2_value']: row['limit_value'] for row in lista2}
 

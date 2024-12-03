@@ -50,29 +50,43 @@ class LimitsTransform:
 
         # Drop duplicates.
         if limits_active.groupBy(*self.key_cols).agg(F.count('limit_type').alias('n')).where(
-            F.col('n') > 1).count() > 0:
+                F.col('n') > 1).count() > 0:
             self.logger.info("Droping limit duplicates")
             limits_active = Utilities.drop_duplicates(limits_active)
 
         # Analizamos marca STS
-        sts_limits = limits_active.where(F.col('limit_type') == 'sts').select('concept1_desc',
-                                                                              'concept1_value').collect()
+        sts_limits = (
+            limits_active.where(
+            F.col('limit_type') == 'sts'
+            )
+            .select('concept1_desc','concept1_value').collect()
+        )
+
         sts_flag = sts_limits[0].concept1_value
         col_sts = sts_limits[0].concept1_desc
 
         if (sts_flag == '1'):
             self.logger.info('Titulización con cumplimiento STS')
-            limits_current = limits_active.where(((F.col('concept1_value') != col_sts) | (
-                (F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
-                                                 )
+            limits_current = (
+                limits_active.where(
+                    (F.col('concept1_value') != col_sts) |
+                     (F.col('concept1_value') == col_sts) &
+                      (F.col('concept1_value') == 1)
+                )
+            )
         else:
             self.logger.info('Titulización sin cumplimiento STS')
-            sts_limites = limits_active.where(((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
+            sts_limites = limits_active.where((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1))
             if (sts_limites.count() > 0):
                 limits_current = limits_active.join(sts_limites, ['id_limit'], 'lefanti')
             else:
-                sts_limites = limits_active.where(
-                    ((F.col('concept1_value') == col_sts) & (F.col('concept1_value') == 1)))
+                sts_limites = (
+                    limits_active.where(
+                        (F.col('concept1_value') == col_sts) &
+                        (F.col('concept1_value') == 1)
+                    )
+                )
+
                 if (sts_limites.count() > 0):
                     limits_current = limits_active.join(sts_limites, ['id_limit'], 'lefanti')
                 else:

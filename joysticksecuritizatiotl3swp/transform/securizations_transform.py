@@ -50,64 +50,107 @@ class SecurizationsTransform:
         """
         Build securizations for algorithm.
         """
-        securizations_for_algorithm_df = securizations_df.withColumn('project_sector_desc',
-                                                                     F.trim('project_sector_desc')
-                                                                     ).join(self.catalogue_sector_project_df,
-                                                                            ['project_sector_desc'], 'left').fillna(
-            'No Informado')
+        securizations_for_algorithm_df = (
+            securizations_df.withColumn(
+                'project_sector_desc',
+                F.trim('project_sector_desc')
+            )
+            .join(self.catalogue_sector_project_df,['project_sector_desc'], 'left')
+            .fillna('No Informado')
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('ico_flag', F.when(
-            F.trim(F.col('deal_purpose_type')) == "ICO España", 1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'ico_flag',
+                F.when(F.trim(F.col('deal_purpose_type')) == "ICO España", 1)
+                .otherwise(0)
+            )
+        )
 
         tipo_titulizacion = self.securization_type
         col_rating_categ = self.non_ig_limit[tipo_titulizacion]['categoria']
         col_rating_pos = self.non_ig_limit[tipo_titulizacion]['valor']
 
-        n_rating = [x[col_rating_pos] for x in securizations_for_algorithm_df.select(col_rating_pos).where(
-            F.col(col_rating_categ) == 'BB+1').distinct().collect()][0]
+        n_rating = [
+            x[col_rating_pos] for x in
+            securizations_for_algorithm_df.select(col_rating_pos).where(F.col(col_rating_categ) == 'BB+1').distinct()
+            .collect()
+        ][0]
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('non_ig_flag', F.when(
-            ((F.col(col_rating_pos) >= n_rating) & (~(F.col(col_rating_categ).like('BBB%')))), 1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'non_ig_flag',
+                F.when(
+                    F.col(col_rating_pos) >= n_rating & ~F.col(col_rating_categ.like('BBB%')),
+                    1
+                ).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('building_project_flag',
-                                                                                   F.when(F.trim(F.col(
-                                                                                       'gf_pf_project_const_type')) == 'S',
-                                                                                          1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'building_project_flag',
+                F.when(F.trim(F.col('gf_pf_project_const_type')) == 'S',1).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('workout_flag', F.when(
-            F.trim(F.col('watch_list_clasification_type')) != 0, 1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'workout_flag',
+                F.when(F.trim(F.col('watch_list_clasification_type')) != 0, 1).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('sts_payment_flag',
-                                                                                   F.when(F.col(
-                                                                                       'sts_payment_condition') == 'true',
-                                                                                          1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'sts_payment_flag',
+                F.when(F.col('sts_payment_condition') == 'true',1).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('sts_sm_rw_flag',
-                                                                                   F.when(F.col(
-                                                                                       'sts_sm_rw_condition') == 'true',
-                                                                                          1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'sts_sm_rw_flag',
+                F.when(F.col('sts_sm_rw_condition') == 'true',1).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('esg_linked_flag',
-                                                                                   F.when(F.col('esg_linked') == 1,
-                                                                                          1).otherwise(0))
+        securizations_for_algorithm_df = (
+            securizations_for_algorithm_df.withColumn(
+                'esg_linked_flag',
+                F.when(F.col('esg_linked') == 1,1).otherwise(0)
+            )
+        )
 
-        securizations_for_algorithm_df = securizations_for_algorithm_df.withColumn('bei_flag', F.when(
-            ((F.col('bei_guaranteed_amount') != 0) & (F.col('bei_guaranteed_amount').isNotNull())), 1).otherwise(0))
+        securizations_for_algorithm_df =(
+            securizations_for_algorithm_df.withColumn(
+                'bei_flag',
+                F.when((F.col('bei_guaranteed_amount' != 0) & F.col('bei_guaranteed_amount').isNotNull()), 1).otherwise(0)
+            )
+        )
 
         # TODO:añadir fecha, ver si aqui o al escribirlo en el main.
         return securizations_for_algorithm_df  # ESCRIBIR EN POSTGRES
 
     def build_constants_df(self, limits_df, securizations_df):
-        constants_df = limits_df.where(F.col('limit_type') == 'constant_type'
-                                       ).select(F.col('concept1_desc').alias('constant_type'),
-                                                F.col('limit_value').alias('constant_value'))
+        constants_df = (
+            limits_df.where(
+                F.col('limit_type') == 'constant_type'
+            )
+            .select(
+                F.col('concept1_desc').alias('constant_type'),F.col('limit_value').alias('constant_value')
+            )
+        )
 
-        lgd = securizations_df.agg(F.avg(F.col("adj_lgd_ma_mitig_per")).cast('float').alias('lgd')
-                                   ).collect()[0].lgd
+        lgd = securizations_df.agg(F.avg(F.col("adj_lgd_ma_mitig_per")).cast('float').alias('lgd')).collect()[0].lgd
 
-        ci_ratio = self.build_ci_df().where(F.trim(F.col('gf_head_office_desc')) == 'ESPAÑA'
-                                            ).select(F.col('gf_customer_contract_control_per').cast('float')
-                                                     ).collect()[0].gf_customer_contract_control_per
+        ci_ratio = (
+            self.build_ci_df().where(
+                F.trim(F.col('gf_head_office_desc')) == 'ESPAÑA')
+            .select(F.col('gf_customer_contract_control_per').cast('float'))
+            .collect()[0]
+            .gf_customer_contract_control_per
+        )
 
         hardcoded_constants_list = [
             {"constant_type": 'tax_rate', "constant_value": self.tax_rate},
@@ -117,7 +160,9 @@ class SecurizationsTransform:
         ]
 
         hardcoded_constants_df = self.dataproc.getSparkSession().createDataFrame(hardcoded_constants_list)
-        constants_final_df = hardcoded_constants_df.union(constants_df).withColumn('closing_date',
-                                                                                   F.lit(self.data_date))
+        constants_final_df = (
+            hardcoded_constants_df.union(constants_df)
+            .withColumn('closing_date',F.lit(self.data_date))
+        )
 
         return constants_final_df  ## ESCRIBIRLO EN POSTGRES
