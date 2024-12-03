@@ -30,12 +30,23 @@ class Paths:  # pragma: no cover
         self.config_cli_rel = config1["KEY"]["global_customer_rel"]
         self.path_members_rel = parameters["PATH_MEMBERS_REL"]
         self.path_hold_group = parameters["PATH_HOLD_GROUP"]
+
         # Taxonomy
         self.path_rel_cat = parameters["PATH_REL_CAT"]
         self.path_cat = parameters["PATH_CAT"]
+
         # Rating Externo
         self.path_ext_rating = parameters["PATH_EXT_RATING"]
+
         # Atributos de ratings de clientes
         self.path_cust_rating = parameters["PATH_CUST_RATING"]
+
         # Acreditadas
         self.path_acreditadas = parameters["PATH_ACREDITADAS"]
+
+        # Paths para el algoritmo
+        self.path_ci = parameters["PATH_CI"]
+        self.path_launchpad = parameters["PATH_LAUNCHPAD"]
+        self.sector_project_catalogue_table = parameters["SECTOR_PROJECT_CATALOGUE_TABLE"]
+        self.limits_datio_field_mapping_table = parameters["LIMITS_DATIO_FIELD_MAPPING_TABLE"]
+

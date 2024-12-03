@@ -917,6 +917,13 @@ class SecuritizationProcess:  # pragma: no cover
                 "gf_ma_tot_expected_loss_amount",
             )
         )
+
+        # Run limits
+        # Run securization preparation
+        # Portfolio optimizer
+        # Save everythin in postgres
+
+
         self.logger.info(
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
         )
