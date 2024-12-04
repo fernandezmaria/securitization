@@ -55,7 +55,7 @@ class SecurizationsTransform:
                 'project_sector_desc',
                 F.trim('project_sector_desc')
             )
-            .join(self.catalogue_sector_project_df,['project_sector_desc'], 'left')
+            .join(self.catalogue_sector_project_df, ['project_sector_desc'], 'left')
             .fillna('No Informado')
         )
 
@@ -90,7 +90,7 @@ class SecurizationsTransform:
         securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'building_project_flag',
-                F.when(F.trim(F.col('gf_pf_project_const_type')) == 'S',1).otherwise(0)
+                F.when(F.trim(F.col('gf_pf_project_const_type')) == 'S', 1).otherwise(0)
             )
         )
 
@@ -104,21 +104,21 @@ class SecurizationsTransform:
         securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'sts_payment_flag',
-                F.when(F.col('sts_payment_condition') == 'true',1).otherwise(0)
+                F.when(F.col('sts_payment_condition') == 'true', 1).otherwise(0)
             )
         )
 
         securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'sts_sm_rw_flag',
-                F.when(F.col('sts_sm_rw_condition') == 'true',1).otherwise(0)
+                F.when(F.col('sts_sm_rw_condition') == 'true', 1).otherwise(0)
             )
         )
 
         securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'esg_linked_flag',
-                F.when(F.col('esg_linked') == 1,1).otherwise(0)
+                F.when(F.col('esg_linked') == 1, 1).otherwise(0)
             )
         )
 
@@ -165,4 +165,4 @@ class SecurizationsTransform:
             .withColumn('closing_date',F.lit(self.data_date))
         )
 
-        return constants_final_df  ## ESCRIBIRLO EN POSTGRES
+        return constants_final_df  # ESCRIBIRLO EN POSTGRES

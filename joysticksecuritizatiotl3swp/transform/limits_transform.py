@@ -57,21 +57,21 @@ class LimitsTransform:
         # Analizamos marca STS
         sts_limits = (
             limits_active.where(
-            F.col('limit_type') == 'sts'
+                F.col('limit_type') == 'sts'
             )
-            .select('concept1_desc','concept1_value').collect()
+            .select('concept1_desc', 'concept1_value').collect()
         )
 
         sts_flag = sts_limits[0].concept1_value
         col_sts = sts_limits[0].concept1_desc
 
-        if (sts_flag == '1'):
+        if sts_flag == '1':
             self.logger.info('Titulización con cumplimiento STS')
             limits_current = (
                 limits_active.where(
                     (F.col('concept1_value') != col_sts) |
-                     (F.col('concept1_value') == col_sts) &
-                      (F.col('concept1_value') == 1)
+                    (F.col('concept1_value') == col_sts) &
+                    (F.col('concept1_value') == 1)
                 )
             )
         else:

@@ -39,8 +39,11 @@ class PortfolioOptimizer:
         limit_value_df = limits_df.withColumn(
             'limit_value',
             F.when(
-                F.col('limit_type') == 'risk_retention',(F.lit(1) - F.col('limit_value')).cast('float')
-             ).otherwise(F.col('limit_value')))
+                F.col('limit_type') == 'risk_retention',
+                (F.lit(1) - F.col('limit_value')).cast('float')
+             )
+            .otherwise(F.col('limit_value'))
+        )
 
         return limit_value_df
 
@@ -49,14 +52,14 @@ class PortfolioOptimizer:
         Calculate the total limits from the limits DataFrame filtering by securitization type.
         """
         field_relation_df = (self.limit_field_relation.drop('corporate_loan_column').
-                             withColumnRenamed('project_finance_column','campo_datio'))
+                             withColumnRenamed('project_finance_column', 'campo_datio'))
 
         if self.securization_type == 'corporate_loan':
-            field_relation_df = self.limit_field_relation.drop(
-                'project_finance_column'
-            ).withColumnRenamed(
-                'corporate_loan_column',
-                'campo_datio'
+            field_relation_df = (
+                self.limit_field_relation.drop(
+                    'project_finance_column'
+                )
+                .withColumnRenamed('corporate_loan_column', 'campo_datio')
             )
 
         total_limits_df = (
@@ -142,20 +145,18 @@ class PortfolioOptimizer:
 
         # Calculamos el importe
         facilities_t1 = (
-            facilities_t1
-                .withColumn(
+            facilities_t1.withColumn(
                     'importe1',
-                    F.col('bbva_drawn_eur_amount')
-                    +(F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
-                )
-                .withColumn(
-                    'importe2',
-                    F.col('gf_facility_securitization_amount') / F.col('limit_risk_retention')
-                )
-                .withColumn(
-                    'importe_susceptible',
-                    F.least(F.col('gf_ma_ead_amount'),F.col('importe1')) - F.col('importe2')
-                )
+                    F.col('bbva_drawn_eur_amount') + (F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
+            )
+            .withColumn(
+                'importe2',
+                F.col('gf_facility_securitization_amount') / F.col('limit_risk_retention')
+            )
+            .withColumn(
+                'importe_susceptible',
+                F.least(F.col('gf_ma_ead_amount'), F.col('importe1')) - F.col('importe2')
+            )
         )
 
         limites_ind = self.get_individual_limits(limites_total)
@@ -175,9 +176,9 @@ class PortfolioOptimizer:
             if (varios_campos == 0):
                 df_limite1 = (
                     limites_ind.where(F.col('limit_type') == k).withColumn(
-                            'concepto_valor',
-                            F.when(F.col('complex_limit') == 1, F.col('concept2_value'))
-                            .otherwise(F.col('concept1_value'))
+                        'concepto_valor',
+                        F.when(F.col('complex_limit') == 1, F.col('concept2_value'))
+                        .otherwise(F.col('concept1_value'))
                     )
                     .select('concepto_valor', 'limit_value')
                     .withColumnRenamed('concepto_valor', v)
@@ -226,10 +227,10 @@ class PortfolioOptimizer:
                     limites_ind.where(
                         F.col('limit_type') == k
                     )
-                    .select('concept1_value', 'concept2_value','limit_value')
+                    .select('concept1_value', 'concept2_value', 'limit_value')
                     .withColumnRenamed('concept1_value', v1)
                     .withColumnRenamed('concept2_value', v2)
-                    .withColumnRenamed('limit_value','limit_' + k)
+                    .withColumnRenamed('limit_value', 'limit_' + k)
                     .withColumn('limit_' + k, F.col('limit_' + k).cast("float"))
                     .withColumn('limit_apply', F.lit('limit_' + k))
                 )
@@ -261,7 +262,7 @@ class PortfolioOptimizer:
                         )
 
                         n1 = facilities_add.where(F.col(v2).isNull()).count()
-                        if n1 > 0:  # si hay valores nulos para la columna v2
+                        if n1 > 0:
                             facilities_add = (
                                 facilities_add.withColumn(
                                     'limit_' + k,
@@ -273,14 +274,14 @@ class PortfolioOptimizer:
             facilities_add = (
                 facilities_add.withColumn(
                     'limits_applied',
-                    F.when(F.col('limit_apply') != '',F.concat(F.col('limits_applied'),F.lit(','), F.col('limit_apply'))
+                    F.when(F.col('limit_apply') != '', F.concat(F.col('limits_applied'),F.lit(','), F.col('limit_apply'))
                     )
                     .otherwise(F.col('limits_applied'))
                 )
                 .drop('limit_apply')
                 .withColumn(
                     'exclusion_limit',
-                    F.when(F.col('limit_' + k) == 0,F.concat(F.lit(k), F.lit(', '), F.col('exclusion_limit')))
+                    F.when(F.col('limit_' + k) == 0, F.concat(F.lit(k), F.lit(', '), F.col('exclusion_limit')))
                     .otherwise(F.col('exclusion_limit'))
                 )
             )
@@ -290,7 +291,7 @@ class PortfolioOptimizer:
         return facilities_add
 
     def build_importe_titulizable(self, facilities_add, dict_lim_ind, limites_ind, limits_indv):
-        l_pr = [l.limit_type for l in
+        l_pr = [limit.limit_type for limit in
                 limites_ind.where(F.col('imp_limit') != 'individual').select('limit_type').distinct().collect()]
 
         dict_lim_ind_p = {}
@@ -337,8 +338,8 @@ class PortfolioOptimizer:
 
         facilities_tot = (
             facilities_add_p.withColumn(
-                'limit_individual',F.least(*[F.col(x).cast('float') for x in limits_indv])
-            ).withColumn('importe_titulizable_ini',F.col('importe_susceptible') * F.col('limit_individual'))
+                'limit_individual', F.least(*[F.col(x).cast('float') for x in limits_indv])
+            ).withColumn('importe_titulizable_ini', F.col('importe_susceptible') * F.col('limit_individual'))
             .withColumn(
                 'importe_titulizable',
                 F.when(
@@ -351,7 +352,7 @@ class PortfolioOptimizer:
                     ((F.col('limit_individual') == 0) | (F.col('imp_maximo_individual') <= 0)), 1
                 )
                 .otherwise(F.col('excluded'))
-            ).withColumn('candidata',F.when(F.col('importe_titulizable') > 0,1).otherwise(0))
+            ).withColumn('candidata', F.when(F.col('importe_titulizable') > 0,1).otherwise(0))
         )
 
         facilities_tr = (
@@ -687,7 +688,7 @@ class PortfolioOptimizer:
             # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiulizar
             if (importe_acumulado >= self.portfolio_size):
                 print('***Se ha alcanzado el máximo del portfolio size:', importe_acumulado)
-                break;
+                break
 
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(df)
 
