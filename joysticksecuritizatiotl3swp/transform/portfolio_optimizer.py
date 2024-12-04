@@ -41,7 +41,7 @@ class PortfolioOptimizer:
             F.when(
                 F.col('limit_type') == 'risk_retention',
                 (F.lit(1) - F.col('limit_value')).cast('float')
-             )
+            )
             .otherwise(F.col('limit_value'))
         )
 
@@ -129,7 +129,7 @@ class PortfolioOptimizer:
         limits_list = [
             (x.limit_type, x.limit_value)
             for x in limites_total.select('limit_type', 'limit_value')
-                .where(F.col('limit_type').isin(*lim_imp)).collect()
+            .where(F.col('limit_type').isin(*lim_imp)).collect()
         ]
 
         facilities_t1 = facilities_t.withColumn(
@@ -146,8 +146,8 @@ class PortfolioOptimizer:
         # Calculamos el importe
         facilities_t1 = (
             facilities_t1.withColumn(
-                    'importe1',
-                    F.col('bbva_drawn_eur_amount') + (F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
+                'importe1',
+                F.col('bbva_drawn_eur_amount') + (F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
             )
             .withColumn(
                 'importe2',
@@ -215,7 +215,7 @@ class PortfolioOptimizer:
                         facilities_add = (
                             facilities_add.withColumn(
                                 'limit_' + k,
-                                F.when(F.col(v).isNull(),dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
+                                F.when(F.col(v).isNull(), dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
                             )
                         )
 
@@ -266,7 +266,7 @@ class PortfolioOptimizer:
                             facilities_add = (
                                 facilities_add.withColumn(
                                     'limit_' + k,
-                                    F.when(F.col(v2).isNull(),dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
+                                    F.when(F.col(v2).isNull(), dict_lim_ind_nul[k]).otherwise(F.col('limit_' + k))
                                 )
                             )
 
@@ -274,8 +274,7 @@ class PortfolioOptimizer:
             facilities_add = (
                 facilities_add.withColumn(
                     'limits_applied',
-                    F.when(F.col('limit_apply') != '', F.concat(F.col('limits_applied'),F.lit(','), F.col('limit_apply'))
-                    )
+                    F.when(F.col('limit_apply') != '', F.concat(F.col('limits_applied'), F.lit(','), F.col('limit_apply')))
                     .otherwise(F.col('limits_applied'))
                 )
                 .drop('limit_apply')
@@ -352,7 +351,7 @@ class PortfolioOptimizer:
                     ((F.col('limit_individual') == 0) | (F.col('imp_maximo_individual') <= 0)), 1
                 )
                 .otherwise(F.col('excluded'))
-            ).withColumn('candidata', F.when(F.col('importe_titulizable') > 0,1).otherwise(0))
+            ).withColumn('candidata', F.when(F.col('importe_titulizable') > 0, 1).otherwise(0))
         )
 
         facilities_tr = (
@@ -429,7 +428,7 @@ class PortfolioOptimizer:
 
             else:  # no es un limite directo y hay que calcular fechas: limite-ndias=valor
                 # print('limite:',k)
-                lk = [l for l in limit_keys if k in l][0]
+                lk = [limit_key for limit_key in limit_keys if k in limit_key][0]
                 dias = int(lk[len(k) + 1:])  # ndias que marcan fecha tope
                 f_tope = np.datetime64(Utilities.get_fecha(self.securitization_date, dias)).astype('datetime64[D]')
 

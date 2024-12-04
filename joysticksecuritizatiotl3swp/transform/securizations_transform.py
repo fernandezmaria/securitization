@@ -122,7 +122,7 @@ class SecurizationsTransform:
             )
         )
 
-        securizations_for_algorithm_df =(
+        securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'bei_flag',
                 F.when((F.col('bei_guaranteed_amount' != 0) & F.col('bei_guaranteed_amount').isNotNull()), 1).otherwise(0)
@@ -138,7 +138,7 @@ class SecurizationsTransform:
                 F.col('limit_type') == 'constant_type'
             )
             .select(
-                F.col('concept1_desc').alias('constant_type'),F.col('limit_value').alias('constant_value')
+                F.col('concept1_desc').alias('constant_type'), F.col('limit_value').alias('constant_value')
             )
         )
 
@@ -162,7 +162,7 @@ class SecurizationsTransform:
         hardcoded_constants_df = self.dataproc.getSparkSession().createDataFrame(hardcoded_constants_list)
         constants_final_df = (
             hardcoded_constants_df.union(constants_df)
-            .withColumn('closing_date',F.lit(self.data_date))
+            .withColumn('closing_date', F.lit(self.data_date))
         )
 
         return constants_final_df  # ESCRIBIRLO EN POSTGRES
