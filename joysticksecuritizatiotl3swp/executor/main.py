@@ -13,26 +13,30 @@ from rubik.load.operations import Operations
 from rubik.load.products import Products
 from rubik.utils.partitions import PartitionsUtils
 
-from joysticksecuritizatiotl3swp.configurations.catalogues import (
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import (
     get_countries_iso_name_table,
 )
-from joysticksecuritizatiotl3swp.configurations.catalogues import rating_dict
-from joysticksecuritizatiotl3swp.configurations.constants import Constants
-from joysticksecuritizatiotl3swp.read.core import EconRegltyCapital, IFRS9
-from joysticksecuritizatiotl3swp.read.entity_cat import EntityCatalogue
-from joysticksecuritizatiotl3swp.read.fx import FX
-from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import rating_dict
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.constants import Constants
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.core import EconRegltyCapital, IFRS9
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.entity_cat import EntityCatalogue
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.fx import FX
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
     GuaranteesAndGuarantorsBuilder,
 )
-from joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.guarantees_and_guarantors import (
     GuaranteesAndGuarantorsLoader,
 )
-from joysticksecuritizatiotl3swp.read.esg_linked import ESGLinkedBuilder
-from joysticksecuritizatiotl3swp.read.mcyg import Maestro
-from joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.read.securitizations import Securitizations
-from joysticksecuritizatiotl3swp.transform.clan import ItemsBalance
-from joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.esg_linked import ESGLinkedBuilder
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.mcyg import Maestro
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.securitizations import Securitizations
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.transform.clan import ItemsBalance
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.transform.limits_transform import LimitsTransform
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.transform.portfolio_optimizer import PortfolioOptimizer
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.transform.securizations_transform import SecurizationsTransform
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.dslb_writer import DSLBWriter
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.postgresql_service import PostgreSQLService
 
 
 class SecuritizationProcess:  # pragma: no cover
@@ -85,6 +89,17 @@ class SecuritizationProcess:  # pragma: no cover
             self.clan_date = None
         else:
             self.clan_date = parameters["CLAN_DATE"]
+
+        # Load postgres class
+        if parameters["OUTPUT_MODE"] == "PRODUCTION":
+            self.postgre_srvc = PostgreSQLService(
+                db_name="dslb",
+                execution_env="dataproc",
+                host="-pgreporting.sandbox.extservices.platform.marathon.mss.",
+                environ="live01",
+                country="gl",
+                port="5432"
+            )
 
     def execute_process(self) -> int:
         """
@@ -918,13 +933,38 @@ class SecuritizationProcess:  # pragma: no cover
             )
         )
 
-        # Run limits
-        # Run securization preparation
-        # Portfolio optimizer
-        # Save everythin in postgres
+        # LIMTS PROCESS
+        limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, "2024-11-11")
+        limits_transformed_df_con_ctes = limits_transform.transform()
+        limits_transformed_df = limits_transformed_df_con_ctes.where(F.col('limit_type') != 'constant_type').withColumn(
+            "limit_value", F.col("limit_value").cast("float"))
+
+        # SECURIZATIONS FOR ALGORITHM
+        securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, "2024-11-11",limits_transformed_df)
+        df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
+        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud) # ESCRIBR EN PSTGRS
+
+        # ALGORITMO
+        portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, "2024-11-20", limits_transformed_df,
+                                                 limits_transformed_df_con_ctes)
+        limites = portfolio_optimizer.get_limit_value(limits_transformed_df)
+        limites_total = portfolio_optimizer.calculate_limits_total(limites)
+
+        facilities_t = portfolio_optimizer.build_facilities(df_securizations_for_algorithm)
+
+        individual_limits_df = portfolio_optimizer.get_individual_limits(limites_total)
+        dict_lim_ind = portfolio_optimizer.build_dict_individual_limits(individual_limits_df)
+        df_limites_individuales, limits_indv = portfolio_optimizer.apply_limites_individuales(limites_total,
+                                                                                              facilities_t,
+                                                                                              dict_lim_ind)
+
+        facilities_tr = portfolio_optimizer.build_importe_titulizable(df_limites_individuales, dict_lim_ind,
+                                                                      individual_limits_df, limits_indv)
+        facilities_excluded_df = facilities_tr.filter(F.col("excluded") == 1)
+        optimized_securizations_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr) # PSTGRS
 
         self.logger.info(
-            "Main.execute_process ended. Output count = " + str(cubo_aud.count())
+            "Main.execute_process ended. Output count = " + str(cubo_aud.count() + ", Facilities selected: " +str(optimized_securizations_df.filter(F.col("selected") == 1).count()))
         )
 
         # Write using DSLBWriter
@@ -944,4 +984,60 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["clan_date"],
         )
+
+        # ESCRITURAS ALGORITHM
+        path_test = "s3://ada-eu-south-2-sbx-live-gl-dslb-data/data/sandboxes/dslb/data/DEVELOPMENT/Joystick/algoritmo_test/"
+        path_facilities =  'facilities' # facilities_df
+        path_limites_only = 'limites' # limites
+        path_constantes = 'constants' # df_constantes
+        path_excluidas = 'facilities_excluded' #exlcuidas de la sabana inicial
+        path_facilities_total = 'cartera_titulizar'  # df_cartera
+
+        self.dslb_writer.write_df_to_sb(
+            df_securizations_for_algorithm,
+            path_test,
+            path_facilities,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
+        )
+        self.dslb_writer.write_df_to_sb(
+            limites_total,
+            path_test,
+            path_limites_only,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
+        )
+        self.dslb_writer.write_df_to_sb(
+            df_constantes,
+            path_test,
+            path_constantes,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
+        )
+        self.dslb_writer.write_df_to_sb(
+            facilities_excluded_df,
+            path_test,
+            path_excluidas,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
+        )
+        self.dslb_writer.write_df_to_sb(
+            optimized_securizations_df,
+            path_test,
+            path_facilities_total,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
+        )
+
+        # Writing algorithm outputs to postgres, for MicroStrategy population
+        #self.postgre_srvc.write(limites_total,self.parameters['POSTGRE_LIMITS_TABLE'])
+        #self.postgre_srvc.write(df_constantes, self.parameters['POSTGRE_SECURIZATIONS_CONSTANT'])
+        #self.postgre_srvc.write(facilities_excluded_df, self.parameters['POSTGRES_ALFORITHM_FACILITIES_EXCLUDED'])
+        #self.postgre_srvc.write(optimized_securizations_df,self.parameters['POSTGRES_ALFORITHM_FULL_OUTPUT'])
+
         return 0

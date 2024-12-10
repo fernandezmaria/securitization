@@ -1,8 +1,8 @@
 from pyspark.sql import functions as F
 
-from joysticksecuritizatiotl3swp.configurations.catalogues import limits_column_mapping
-from joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import limits_column_mapping
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class LimitsLoader:
@@ -34,17 +34,21 @@ class LimitsLoader:
 
         return df
 
-    def read_limits(self, data_date):
+    def read_limits(self):
         """
         Read limits from launchpad
         """
 
         self.logger.info(f"Reading limit launchpad data for date {data_date}")
-
+        last_date_available = (
+            Utilities.get_last_value_partition_table(
+                self.limits_datio_field_mapping_table,
+                self.limits_datio_field_mapping_date_field)
+        )
         # TODO: Cuando el launchpad este disponible, cambiar por la tabla que se ingesta en master.
         limits_df = (
             self.dataproc.read().option("delimiter", ",").option("header", "True").option("inferSchema", "True")
-            .csv(f"{self.limits_path}/{self.limits_date_field}={data_date}")
+            .csv(f"{self.limits_path}/{self.limits_date_field}={last_date_available}")
         )
 
         limits_df = (

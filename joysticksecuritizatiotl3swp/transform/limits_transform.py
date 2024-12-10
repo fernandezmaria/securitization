@@ -1,9 +1,9 @@
 from pyspark.sql import functions as F, Window as W
 import re
 
-from joysticksecuritizatiotl3swp.configurations.catalogues import limits_key_cols
-from joysticksecuritizatiotl3swp.read.limits import LimitsLoader
-from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import limits_key_cols
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.limits import LimitsLoader
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class LimitsTransform:
@@ -12,7 +12,7 @@ class LimitsTransform:
         self.dataproc = dataproc
         self.data_date = data_date
         self.parameters = parameters
-        self.limits = LimitsLoader(dataproc, parameters)
+        self.limits = LimitsLoader(logger, dataproc, parameters)
         self.key_cols = limits_key_cols
 
     def get_date(date: str):
@@ -93,3 +93,4 @@ class LimitsTransform:
                     limits_current = limits_active
 
         return limits_current  # GUARDAR A POSTGRES
+

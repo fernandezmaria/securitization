@@ -2,11 +2,12 @@ import numpy as np
 import pandas as pd
 from pyspark.sql import functions as F
 
-from joysticksecuritizatiotl3swp.configurations.catalogues import facility_type, key_facility
-from joysticksecuritizatiotl3swp.read.limits import LimitsLoader
-from joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.utils.algorithm_utils import SecuritizationUtils
-from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import facility_type, \
+    key_facility
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.limits import LimitsLoader
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.algorithm_utils import SecuritizationUtils
+from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class PortfolioOptimizer:
@@ -28,7 +29,7 @@ class PortfolioOptimizer:
         self.facility_type_dict = facility_type
         self.key_facility = key_facility
         self.securization_type = SecuritizationUtils.get_securization_type(limits_processed_df)
-        self.limit_field_relation = LimitsLoader(dataproc, self.parameters).read_limit_field_relation()
+        self.limit_field_relation = LimitsLoader(logger, dataproc, parameters).read_limit_field_relation()
         self.securitization_escenario, self.securitization_date = SecuritizationUtils.get_securitization_escenario_and_date(
             limits_processed_df)
 
@@ -122,6 +123,8 @@ class PortfolioOptimizer:
         return individual_limits_list
 
     def apply_limites_individuales(self, limites_total, facilities_t, dict_lim_ind):
+
+        limits_indv = []
 
         # Limites necesarios
         lim_imp = ['risk_retention', 'ccf']
@@ -274,7 +277,8 @@ class PortfolioOptimizer:
             facilities_add = (
                 facilities_add.withColumn(
                     'limits_applied',
-                    F.when(F.col('limit_apply') != '', F.concat(F.col('limits_applied'), F.lit(','), F.col('limit_apply')))
+                    F.when(F.col('limit_apply') != '',
+                           F.concat(F.col('limits_applied'), F.lit(','), F.col('limit_apply')))
                     .otherwise(F.col('limits_applied'))
                 )
                 .drop('limit_apply')
@@ -285,9 +289,11 @@ class PortfolioOptimizer:
                 )
             )
 
+            limits_indv.append('limit_' + k)
+
             varios_campos = 0
 
-        return facilities_add
+        return facilities_add, limits_indv
 
     def build_importe_titulizable(self, facilities_add, dict_lim_ind, limites_ind, limits_indv):
         l_pr = [limit.limit_type for limit in
@@ -454,48 +460,6 @@ class PortfolioOptimizer:
         l_max_limites = {key: (l_lim_marcados[key] * float(self.portfolio_size)) for key in l_lim_marcados}
         return l_max_limites
 
-    """
-    def inicializar_consumos(self, dict_lim_values, dict_lim_port, df):
-        l_lim_consumidos = {}  # inicializamos diccionario de consumos
-        limit_keys = list(dict_lim_values.keys())  # % marcados en launchad
-        keys_fechas = ['maturity_min', 'maturity_max']
-
-        for k, v in dict_lim_port.items():
-            # print(k,v)
-            if (k not in keys_fechas):  # caso base: limite-categoria=valor
-                for k1 in df[v].unique():  # recojo todos los posibles valores de ese campo en la facility
-                    l_lim_consumidos[k + '-' + str(k1)] = 0.0000
-
-                    # si no hay marcado limite se pone a 1.0
-                    if (k + '-' + str(k1) not in limit_keys):
-                        valor = 1.0000
-
-                        if (k + '-' + 'total' in limit_keys):  # si es un limite a nivel global como TODOS los grupos
-                            valor = round(float(dict_lim_values[k + '-' + 'total']), 4)
-                            # valor = round(float(dict_lim_values[k + '-' + 'total'].replace(',', '.')), 4)
-                        dict_lim_values[k + '-' + str(k1)] = valor
-
-            else:  # no es un limite directo y hay que calcular fechas: limite-ndias=valor
-                # print('limite:',k)
-                lk = [l for l in limit_keys if k in l][0]
-                dias = int(lk[len(k) + 1:])  # ndias que marcan fecha tope
-                f_tope = np.datetime64(Utilities.get_fecha(self.securitization_date, dias)).astype('datetime64[D]')
-
-                for k1 in df[v].unique().astype('datetime64[D]'):
-                    l_lim_consumidos[k + '-' + str(k1)] = 0.0000
-                    if (((k == 'maturity_min') & (k1 >= f_tope)) | ((k == 'maturity_max') & (k1 <= f_tope))):
-                        valor = 1.0000  # valor si el limite no aplica
-                    else:
-                        valor = round(float(dict_lim_values[lk]), 4)  # valor si el limite aplica
-
-                    dict_lim_values[k + '-' + str(k1)] = valor
-
-        facilities_keys = list(l_lim_consumidos.keys())
-        l_lim_marcados = {key: round(dict_lim_values[key], 4) for key in facilities_keys}
-        l_max_limites = {key: (l_lim_marcados[key] * float(self.portfolio_size)) for key in l_lim_marcados}
-        return l_lim_consumidos, l_lim_marcados, l_max_limites
-    """
-
     def get_keys_facility(self, i_facility, dataframe, dict_lim_port, cols_type):
         """
         Function that get's facility keys from dataframe.
@@ -650,6 +614,18 @@ class PortfolioOptimizer:
                         df.loc[i, 'consumido_' + k] = l_lim_consumidos[v]
                         df.loc[i, 'importe_consumido_' + k] = l_importe_consumidos[v]
 
+                if (importe_seleccionado > 0):
+                    # PASO_6: Actualizamos los acumulado tanto de limites como de importe a titulizar
+                    importe_acumulado = importe_acumulado + importe_seleccionado
+
+                    por_consumido = round(float(importe_seleccionado / self.portfolio_size), 7)
+
+                    for k, v in keys_f.items():
+                        l_lim_consumidos[v] = round(float(l_lim_consumidos[v] + por_consumido), 7)
+                        l_importe_consumidos[v] = l_importe_consumidos[v] + importe_seleccionado
+                        df.loc[i, 'consumido_' + k] = l_lim_consumidos[v]
+                        df.loc[i, 'importe_consumido_' + k] = l_importe_consumidos[v]
+
                     # PASO_7: Rellenamos traza a nivel facility
                     selected_facilities.append((i, por_consumido))
                     df.loc[i, 'selected'] = 1
@@ -684,7 +660,7 @@ class PortfolioOptimizer:
                     df.loc[i, 'consumido_' + k] = l_lim_consumidos[v]
                     df.loc[i, 'importe_consumido_' + k] = l_importe_consumidos[v]
 
-            # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiulizar
+            # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiu
             if (importe_acumulado >= self.portfolio_size):
                 print('***Se ha alcanzado el máximo del portfolio size:', importe_acumulado)
                 break
@@ -718,6 +694,22 @@ class PortfolioOptimizer:
                 else:
                     optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.round(F.col(c), 4))
 
-        print('tipo de datos de las columnas:', tipos)
+        cols_date = ['clan_date', 'deal_signing_date', 'expiration_date']
+
+        for c in cols_date:
+            optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.to_date(F.col(c), "d-MMM-yyyy"))
+
+        # Adding concat column and dropping id for ordering.
+        optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
+        optimized_cartera_spark_df = (
+            optimized_cartera_spark_df.withColumn(
+                'facility_id',
+                F.concat(
+                    optimized_cartera_spark_df.delta_file_id,
+                    F.lit('_'),
+                    optimized_cartera_spark_df.delta_file_band_id)
+            )
+        )
 
         return optimized_cartera_spark_df
+
