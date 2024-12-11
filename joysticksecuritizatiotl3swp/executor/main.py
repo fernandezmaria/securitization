@@ -945,7 +945,6 @@ class SecuritizationProcess:  # pragma: no cover
 
         cubo_aud.cache()
 
-
         # LIMTS PROCESS
         limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
         limits_transformed_df_con_ctes = limits_transform.transform()
@@ -954,7 +953,7 @@ class SecuritizationProcess:  # pragma: no cover
         )
 
         # SECURIZATIONS FOR ALGORITHM
-        securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date,limits_transformed_df)
+        securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df)
         df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
         df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud)
 
@@ -981,7 +980,6 @@ class SecuritizationProcess:  # pragma: no cover
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
         )
 
-
         # Write using DSLBWriter
         self.spark.conf.set("spark.sql.parquet.mergeSchema", "false")
         self.dslb_writer.write_df_to_sb(
@@ -1001,9 +999,8 @@ class SecuritizationProcess:  # pragma: no cover
             partition_cols=["clan_date"],
         )
 
-
         # ESCRITURAS ALGORITHM
-        path_facilities =  'facilities'  # facilities_df
+        path_facilities = 'facilities'  # facilities_df
         path_limites_only = 'limites'  # limites
         path_constantes = 'constants'  # df_constantes
         path_excluidas = 'facilities_excluded'  # exlcuidas de la sabana inicial
@@ -1053,7 +1050,6 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
-
 
         # Writing algorithm outputs to postgres, for MicroStrategy population
         self.postgre_srvc.write(limites_total, self.parameters['POSTGRE_LIMITS_TABLE'])
