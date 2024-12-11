@@ -712,4 +712,3 @@ class PortfolioOptimizer:
         )
 
         return optimized_cartera_spark_df
-

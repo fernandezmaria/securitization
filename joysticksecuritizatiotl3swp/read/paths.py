@@ -56,4 +56,3 @@ class Paths:  # pragma: no cover
         self.postgre_algorithm_facilities_excluded_table = parameters['POSTGRE_ALFORITHM_FACILITIES_EXCLUDED']
         self.postgre_algorithm_full_output_table = parameters['POSTGRE_ALFORITHM_FULL_OUTPUT']
         self.path_algorithm_output = parameters['ALGORITHM_OUTPUT_PATH']
-

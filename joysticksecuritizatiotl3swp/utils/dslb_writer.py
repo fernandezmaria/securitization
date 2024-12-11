@@ -1,9 +1,6 @@
-"""
-Module to write in DSLB
-"""
 from alfred.alerts.savers import save_data_to_csv
 from pyspark.sql import functions as F
-
+from pyspark.errors.exceptions.captured import AnalysisException
 
 class DSLBWriter:  # pragma: no cover
     """Class containing the function to write in DSLB Sandbox"""
@@ -60,9 +57,15 @@ class DSLBWriter:  # pragma: no cover
             if repartition_num:
                 df = df.repartition(repartition_num)
             if partition_cols:
-                # Align the schema of the dataframe with the existing parquet files
-                #df = self.align_schemas(df, table_path)
-                self.dataproc.write().mode(write_mode).partition_by(
+                try:
+                    # Align the schema of the dataframe with the existing parquet files
+                    df = self.align_schemas(df, table_path)
+                except AnalysisException as e:
+                    if "PATH_NOT_FOUND" in str(e):
+                        self.logger.warning(f"Path not found: {table_path}. Proceeding with writing.")
+                    else:
+                        raise
+                    self.dataproc.write().mode(write_mode).partition_by(
                     partition_cols
                 ).parquet(df.repartition(1, *partition_cols), table_path)
             else:

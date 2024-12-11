@@ -39,7 +39,6 @@ class LimitsLoader:
         Read limits from launchpad
         """
 
-
         last_date_available = (
             Utilities.get_last_value_partition_table(
                 self.limits_datio_field_mapping_table,

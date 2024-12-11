@@ -25,7 +25,7 @@ class SecurizationsTransform:
         self.limits_df = limits_df
 
         self.securization_type = SecuritizationUtils.get_securization_type(limits_df)
-        self.catalogue_sector_project_df = CatalogueSectorProjectLoader(logger ,dataproc,
+        self.catalogue_sector_project_df = CatalogueSectorProjectLoader(logger, dataproc,
                                                                         parameters).read_catalogue_sector_project_relation()
         self.path_ci = self.paths.path_ci
         self.raw_ci_df = self.dataproc.read().parquet(self.path_ci)
@@ -172,4 +172,3 @@ class SecurizationsTransform:
         )
 
         return constants_final_df  # ESCRIBIRLO EN POSTGRES
-

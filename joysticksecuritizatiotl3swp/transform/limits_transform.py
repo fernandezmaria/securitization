@@ -93,5 +93,3 @@ class LimitsTransform:
                     limits_current = limits_active
 
         return limits_current  # GUARDAR A POSTGRES
-
-

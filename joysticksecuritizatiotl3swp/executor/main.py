@@ -100,7 +100,6 @@ class SecuritizationProcess:  # pragma: no cover
             self.data_date = parameters["DATA_DATE"]
             self.logger.info("DATA_DATE set to " + self.data_date)
 
-
         # Load postgres class
         if parameters["OUTPUT_MODE"] == "PRODUCTION":
             self.postgre_srvc = PostgreSQLService(
@@ -946,16 +945,19 @@ class SecuritizationProcess:  # pragma: no cover
 
         cubo_aud.cache()
 
+
         # LIMTS PROCESS
         limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
         limits_transformed_df_con_ctes = limits_transform.transform()
         limits_transformed_df = limits_transformed_df_con_ctes.where(F.col('limit_type') != 'constant_type').withColumn(
             "limit_value", F.col("limit_value").cast("float"))
 
+
         # SECURIZATIONS FOR ALGORITHM
         securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date,limits_transformed_df)
         df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
         df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud) # ESCRIBR EN PSTGRS
+
 
         # ALGORITMO
         portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df,
@@ -998,8 +1000,8 @@ class SecuritizationProcess:  # pragma: no cover
             partition_cols=["clan_date"],
         )
 
+
         # ESCRITURAS ALGORITHM
-        path_test = "s3://ada-eu-south-2-sbx-live-gl-dslb-data/data/sandboxes/dslb/data/DEVELOPMENT/Joystick/algoritmo_test/"
         path_facilities =  'facilities' # facilities_df
         path_limites_only = 'limites' # limites
         path_constantes = 'constants' # df_constantes
@@ -1022,6 +1024,7 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
+
         self.dslb_writer.write_df_to_sb(
             df_constantes,
             self.paths.path_algorithm_output,
@@ -1030,6 +1033,7 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
+
         self.dslb_writer.write_df_to_sb(
             facilities_excluded_df,
             self.paths.path_algorithm_output,
@@ -1038,6 +1042,7 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
+
         self.dslb_writer.write_df_to_sb(
             optimized_securizations_df,
             self.paths.path_algorithm_output,
@@ -1048,9 +1053,9 @@ class SecuritizationProcess:  # pragma: no cover
         )
 
         # Writing algorithm outputs to postgres, for MicroStrategy population
-        self.postgre_srvc.write(limites_total,self.parameters['POSTGRE_LIMITS_TABLE'])
+        self.postgre_srvc.write(limites_total, self.parameters['POSTGRE_LIMITS_TABLE'])
         self.postgre_srvc.write(df_constantes, self.parameters['POSTGRE_SECURIZATIONS_CONSTANT'])
         self.postgre_srvc.write(facilities_excluded_df, self.parameters['POSTGRES_ALFORITHM_FACILITIES_EXCLUDED'])
-        self.postgre_srvc.write(optimized_securizations_df,self.parameters['POSTGRES_ALFORITHM_FULL_OUTPUT'])
+        self.postgre_srvc.write(optimized_securizations_df, self.parameters['POSTGRES_ALFORITHM_FULL_OUTPUT'])
 
         return 0
