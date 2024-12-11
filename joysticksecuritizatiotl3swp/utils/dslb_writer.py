@@ -61,7 +61,7 @@ class DSLBWriter:  # pragma: no cover
                 df = df.repartition(repartition_num)
             if partition_cols:
                 # Align the schema of the dataframe with the existing parquet files
-                df = self.align_schemas(df, table_path)
+                #df = self.align_schemas(df, table_path)
                 self.dataproc.write().mode(write_mode).partition_by(
                     partition_cols
                 ).parquet(df.repartition(1, *partition_cols), table_path)

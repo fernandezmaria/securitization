@@ -1,9 +1,9 @@
 from pyspark.sql import functions as F, Window as W
 import re
 
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import limits_key_cols
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.limits import LimitsLoader
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.configurations.catalogues import limits_key_cols
+from joysticksecuritizatiotl3swp.read.limits import LimitsLoader
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class LimitsTransform:
@@ -43,7 +43,7 @@ class LimitsTransform:
         """
         self.logger.info("Transforming limits")
 
-        limits_df = self.limits.read_limits(self.data_date)
+        limits_df = self.limits.read_limits()
 
         # Filter active limits uploaded via launchpad.
         limits_active = limits_df.where(F.col('active_flag') == 1)
@@ -93,4 +93,5 @@ class LimitsTransform:
                     limits_current = limits_active
 
         return limits_current  # GUARDAR A POSTGRES
+
 

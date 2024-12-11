@@ -1,8 +1,8 @@
 from pyspark.sql import functions as F
 
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import limits_column_mapping
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.configurations.catalogues import limits_column_mapping
+from joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class LimitsLoader:
@@ -39,7 +39,7 @@ class LimitsLoader:
         Read limits from launchpad
         """
 
-        self.logger.info(f"Reading limit launchpad data for date {data_date}")
+
         last_date_available = (
             Utilities.get_last_value_partition_table(
                 self.limits_datio_field_mapping_table,
@@ -58,6 +58,8 @@ class LimitsLoader:
                 F.regexp_replace('limit_value', ',', '.')
             )
         )
+
+        self.logger.info(f"Reading limit launchpad data for date {last_date_available}")
 
         return limits_df
 

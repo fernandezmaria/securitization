@@ -1,11 +1,11 @@
 from pyspark.sql import functions as F
 from rubik.load.rorc import Values as RORCvalues
 
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.configurations.catalogues import non_ig_limit
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.catalogue_sector_project import CatalogueSectorProjectLoader
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.algorithm_utils import SecuritizationUtils
+from joysticksecuritizatiotl3swp.configurations.catalogues import non_ig_limit
+from joysticksecuritizatiotl3swp.read.catalogue_sector_project import CatalogueSectorProjectLoader
+from joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.utils.algorithm_utils import SecuritizationUtils
 
 
 class SecurizationsTransform:
@@ -172,3 +172,4 @@ class SecurizationsTransform:
         )
 
         return constants_final_df  # ESCRIBIRLO EN POSTGRES
+

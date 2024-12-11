@@ -1,7 +1,7 @@
 from pyspark.sql import functions as F
 
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.read.paths import Paths
-from joysticksecuritizatiotl3swp.joysticksecuritizatiotl3swp.utils.utilities import Utilities
+from joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class CatalogueSectorProjectLoader:
