@@ -2,6 +2,7 @@ from alfred.alerts.savers import save_data_to_csv
 from pyspark.sql import functions as F
 from pyspark.errors.exceptions.captured import AnalysisException
 
+
 class DSLBWriter:  # pragma: no cover
     """Class containing the function to write in DSLB Sandbox"""
 

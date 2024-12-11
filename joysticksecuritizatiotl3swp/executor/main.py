@@ -950,14 +950,13 @@ class SecuritizationProcess:  # pragma: no cover
         limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
         limits_transformed_df_con_ctes = limits_transform.transform()
         limits_transformed_df = limits_transformed_df_con_ctes.where(F.col('limit_type') != 'constant_type').withColumn(
-            "limit_value", F.col("limit_value").cast("float"))
-
+            "limit_value", F.col("limit_value").cast("float")
+        )
 
         # SECURIZATIONS FOR ALGORITHM
         securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date,limits_transformed_df)
         df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
-        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud) # ESCRIBR EN PSTGRS
-
+        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud)
 
         # ALGORITMO
         portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df,
@@ -1004,10 +1003,10 @@ class SecuritizationProcess:  # pragma: no cover
 
 
         # ESCRITURAS ALGORITHM
-        path_facilities =  'facilities' # facilities_df
-        path_limites_only = 'limites' # limites
-        path_constantes = 'constants' # df_constantes
-        path_excluidas = 'facilities_excluded' #exlcuidas de la sabana inicial
+        path_facilities =  'facilities'  # facilities_df
+        path_limites_only = 'limites'  # limites
+        path_constantes = 'constants'  # df_constantes
+        path_excluidas = 'facilities_excluded'  # exlcuidas de la sabana inicial
         path_facilities_total = 'cartera_titulizar'  # df_cartera
 
         self.dslb_writer.write_df_to_sb(
