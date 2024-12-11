@@ -976,11 +976,12 @@ class SecuritizationProcess:  # pragma: no cover
         facilities_tr = portfolio_optimizer.build_importe_titulizable(df_limites_individuales, dict_lim_ind,
                                                                       individual_limits_df, limits_indv)
         facilities_excluded_df = facilities_tr.filter(F.col("excluded") == 1)
-        optimized_securizations_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr) # PSTGRS
+        optimized_securizations_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr)
 
         self.logger.info(
-            "Main.execute_process ended. Output count = " + str(cubo_aud.count() + ", Facilities selected: " +str(optimized_securizations_df.filter(F.col("selected") == 1).count()))
+            "Main.execute_process ended. Output count = " + str(cubo_aud.count())
         )
+
 
         # Write using DSLBWriter
         self.spark.conf.set("spark.sql.parquet.mergeSchema", "false")
@@ -991,6 +992,7 @@ class SecuritizationProcess:  # pragma: no cover
             "csv",
             "overwrite",
         )
+
         self.dslb_writer.write_df_to_sb(
             cubo_aud,
             f"{self.sandbox_path}mrr",
@@ -1016,6 +1018,7 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
+
         self.dslb_writer.write_df_to_sb(
             limites_total,
             self.paths.path_algorithm_output,
@@ -1051,6 +1054,7 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["closing_date"],
         )
+
 
         # Writing algorithm outputs to postgres, for MicroStrategy population
         self.postgre_srvc.write(limites_total, self.parameters['POSTGRE_LIMITS_TABLE'])

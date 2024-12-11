@@ -65,7 +65,7 @@ class DSLBWriter:  # pragma: no cover
                         self.logger.warning(f"Path not found: {table_path}. Proceeding with writing.")
                     else:
                         raise
-                    self.dataproc.write().mode(write_mode).partition_by(
+                self.dataproc.write().mode(write_mode).partition_by(
                     partition_cols
                 ).parquet(df.repartition(1, *partition_cols), table_path)
             else:
