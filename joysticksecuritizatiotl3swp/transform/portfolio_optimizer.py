@@ -662,7 +662,7 @@ class PortfolioOptimizer:
 
             # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiu
             if (importe_acumulado >= self.portfolio_size):
-                self.logger.info('***Se ha alcanzado el máximo del portfolio size:', str(importe_acumulado))
+                self.logger.info('***Se ha alcanzado el máximo del portfolio size: %s', str(importe_acumulado))
                 break
 
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(df)
