@@ -943,7 +943,27 @@ class SecuritizationProcess:  # pragma: no cover
             )
         )
 
-        cubo_aud.cache()
+        self.spark.conf.set("spark.sql.parquet.mergeSchema", "false")
+        self.dslb_writer.write_df_to_sb(
+            cubo_aud,
+            f"{self.sandbox_path}mrr/mrr_csv",
+            "securitization_model_portfolio_" + date_clan + ".csv",
+            "csv",
+            "overwrite",
+        )
+
+        self.dslb_writer.write_df_to_sb(
+            cubo_aud,
+            f"{self.sandbox_path}mrr",
+            "joystick_mrr",
+            "parquet",
+            "overwrite",
+            partition_cols=["clan_date"],
+        )
+
+        initial_facilities_df = self.dataproc.read().parquet(
+            f"{self.sandbox_path}mrr/joystick_mrr"
+        ).filter(F.col("clan_date") == self.clan_date)
 
         # LIMTS PROCESS
         limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
@@ -954,8 +974,8 @@ class SecuritizationProcess:  # pragma: no cover
 
         # SECURIZATIONS FOR ALGORITHM
         securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df)
-        df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
-        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud)
+        df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(initial_facilities_df)
+        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, initial_facilities_df)
 
         # ALGORITMO
         portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df,
@@ -978,25 +998,6 @@ class SecuritizationProcess:  # pragma: no cover
 
         self.logger.info(
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
-        )
-
-        # Write using DSLBWriter
-        self.spark.conf.set("spark.sql.parquet.mergeSchema", "false")
-        self.dslb_writer.write_df_to_sb(
-            cubo_aud,
-            f"{self.sandbox_path}mrr/mrr_csv",
-            "securitization_model_portfolio_" + date_clan + ".csv",
-            "csv",
-            "overwrite",
-        )
-
-        self.dslb_writer.write_df_to_sb(
-            cubo_aud,
-            f"{self.sandbox_path}mrr",
-            "joystick_mrr",
-            "parquet",
-            "overwrite",
-            partition_cols=["clan_date"],
         )
 
         # ESCRITURAS ALGORITHM
