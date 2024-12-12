@@ -318,7 +318,6 @@ class PortfolioOptimizer:
 
         if (len(l_pr) > 0):
             for k in l_pr:
-                #self.logger.info('limite con importe sujeto a portfolio size:', k)
 
                 dict_lim_ind_p[k] = dict_lim_ind[k]
 
@@ -672,7 +671,6 @@ class PortfolioOptimizer:
 
             # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiu
             if (importe_acumulado >= self.portfolio_size):
-                #self.logger.info('***Se ha alcanzado el máximo del portfolio size: %s', str(importe_acumulado))
                 break
 
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(df)
