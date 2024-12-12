@@ -169,9 +169,6 @@ class PortfolioOptimizer:
         varios_campos = 0
 
         for k, v in dict_lim_ind.items():
-            self.logger.info(f"Analysed individual limit: {k}")
-            self.logger.info(f"Field to be apllied: {v}")
-
             if ('/' in v):  # limite con varios campos viene con este separador en el catálogo de campos
                 varios_campos = 1
 
