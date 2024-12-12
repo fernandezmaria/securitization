@@ -25,7 +25,7 @@ class Utilities:
         Takes max value of the specified partition in a bbdd & table.
         """
         last_partition = max(DatioCatalog().get().listPartitionNames(bbdd_table_concat))
-        print(last_partition)
+        
         key_value_pairs = last_partition.split('/')
         for pair in key_value_pairs:
             if pair.startswith(partition_field + '='):
