@@ -88,6 +88,8 @@ class PortfolioOptimizer:
             .withColumn('exclusion_limit', F.lit(''))
         )
 
+        self.logger.info("Building facilities for algorithm")
+
         return facilities_filtered_by_type_df
 
     def build_portfolio_size(self, total_limits_df):
@@ -102,12 +104,16 @@ class PortfolioOptimizer:
 
     def build_dict_individual_limits(self, individual_limits_df):
 
+        self.logger.info("Building individual limits dictionary")
+
         limit_field_list = individual_limits_df.select('limit_type', 'campo_datio').collect()
         dict_indiviual_limits = {row['limit_type']: row['campo_datio'] for row in limit_field_list}
 
         return dict_indiviual_limits
 
     def get_individual_limits(self, total_limits_df):
+
+        self.logger.info("Getting individual limits")
 
         individual_limits_df = total_limits_df.where(F.col('limit_scope') == 'individual')
 
@@ -123,6 +129,8 @@ class PortfolioOptimizer:
         return individual_limits_list
 
     def apply_limites_individuales(self, limites_total, facilities_df, dict_lim_ind):
+
+        self.logger.info("Applying individual limits")
 
         limits_indv = []
 
@@ -293,6 +301,9 @@ class PortfolioOptimizer:
         return facilities_with_individual_limits_applied_df, limits_indv
 
     def build_importe_titulizable(self, facilities_with_individual_limits_applied_df, dict_lim_ind, limites_ind, limits_indv):
+
+        self.logger.info("Building importe titulizable")
+
         l_pr = [limit.limit_type for limit in
                 limites_ind.where(F.col('imp_limit') != 'individual').select('limit_type').distinct().collect()]
 
@@ -307,7 +318,7 @@ class PortfolioOptimizer:
 
         if (len(l_pr) > 0):
             for k in l_pr:
-                self.logger.info('limite con importe sujeto a portfolio size:', k)
+                #self.logger.info('limite con importe sujeto a portfolio size:', k)
 
                 dict_lim_ind_p[k] = dict_lim_ind[k]
 
@@ -482,6 +493,8 @@ class PortfolioOptimizer:
         """
         Function that builds the portfolio limits.
         """
+
+        self.logger.info("Building portfolio limits")
 
         # Building pk for algorithm ordering.
         facilities_disponibles = (
@@ -659,7 +672,7 @@ class PortfolioOptimizer:
 
             # PASO_8: si se ha alcanzado el máximo a titulizar salimos del bucle, ya tenemos las facilities a titiu
             if (importe_acumulado >= self.portfolio_size):
-                self.logger.info('***Se ha alcanzado el máximo del portfolio size: %s', str(importe_acumulado))
+                #self.logger.info('***Se ha alcanzado el máximo del portfolio size: %s', str(importe_acumulado))
                 break
 
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(df)
