@@ -38,16 +38,16 @@ class LimitsLoader:
         """
         Read limits from launchpad
         """
-
+        # TODO cambiar esto
         last_date_available = (
-            Utilities.get_last_value_partition_table(
-                self.limits_datio_field_mapping_table,
-                self.limits_datio_field_mapping_date_field)
+            Utilities.last_partition(
+                self.limits_path,
+                self.limits_date_field)
         )
         # TODO: Cuando el launchpad este disponible, cambiar por la tabla que se ingesta en master.
         limits_df = (
             self.dataproc.read().option("delimiter", ",").option("header", "True").option("inferSchema", "True")
-            .csv(f"{self.limits_path}/{self.limits_date_field}={last_date_available}")
+            .csv(f"{self.limits_path}{self.limits_date_field}={last_date_available}")
         )
 
         limits_df = (
