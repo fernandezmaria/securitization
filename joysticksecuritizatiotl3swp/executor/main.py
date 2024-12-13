@@ -1006,6 +1006,27 @@ class SecuritizationProcess:  # pragma: no cover
         path_excluidas = 'facilities_excluded'  # exlcuidas de la sabana inicial
         path_facilities_total = 'cartera_titulizar'  # df_cartera
 
+        # ADJUSTING partition in dataframe outputs
+        df_securizations_for_algorithm = df_securizations_for_algorithm.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
+        limites_total = limites_total.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
+        df_constantes = df_constantes.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
+        facilities_excluded_df = facilities_excluded_df.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
+        optimized_securizations_df = optimized_securizations_df.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
         self.dslb_writer.write_df_to_sb(
             df_securizations_for_algorithm,
             self.paths.path_algorithm_output,

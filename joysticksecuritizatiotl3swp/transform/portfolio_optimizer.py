@@ -705,7 +705,7 @@ class PortfolioOptimizer:
         cols_date = ['clan_date', 'deal_signing_date', 'expiration_date']
 
         for c in cols_date:
-            optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.to_date(F.col(c), "d-MMM-yyyy"))
+            optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.to_date(F.col(c), "dd-MMM-yyyy"))
 
         # Adding concat column and dropping id for ordering.
         optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
