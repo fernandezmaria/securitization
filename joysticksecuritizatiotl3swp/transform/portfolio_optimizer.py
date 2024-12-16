@@ -170,10 +170,6 @@ class PortfolioOptimizer:
             )
         )
 
-
-
-        #self.logger.info('Facilities con importe a titulizar:', facilities_f0.where(F.col('importe_susceptible') > 0).count())
-
         limites_ind = self.get_individual_limits(limites_total)
         dict_lim_ind_nul = self.get_individual_limits_with_null_values(limites_ind)
         limites_ind.show(230, False)
