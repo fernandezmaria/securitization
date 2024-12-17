@@ -59,4 +59,3 @@ class Paths:  # pragma: no cover
         self.postgre_algorithm_full_output_table = parameters['POSTGRE_ALFORITHM_FULL_OUTPUT']
         self.postgre_algorithm_limit_dictionary = parameters['POSTGRE_ALGORITHM_LIMIT_DICTIONARY']
         self.path_algorithm_output = parameters['ALGORITHM_OUTPUT_PATH']
-

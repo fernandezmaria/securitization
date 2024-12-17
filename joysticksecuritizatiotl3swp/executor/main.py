@@ -1003,9 +1003,9 @@ class SecuritizationProcess:  # pragma: no cover
         path_facilities = 'facilities'  # facilities_df
         path_limites_only = 'limites'  # limites
         path_constantes = 'constants'  # df_constantes
-        path_excluidas = 'facilities_excluded'  # exlcuidas de la sabana inicial
+        path_excluidas = 'facilities_excluded'
         path_facilities_total = 'cartera_titulizar'
-        path_limites_dictionary_concat = 'limits_dictionary_concat'# df_cartera
+        path_limites_dictionary_concat = 'limits_dictionary_concat'  # df_cartera
 
         # ADJUSTING partition in dataframe outputs
         df_securizations_for_algorithm = df_securizations_for_algorithm.withColumn(
