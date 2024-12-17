@@ -1,7 +1,6 @@
 """
 This module contains the paths to the master tables the process uses
 """
-from symbol import parameters
 
 from rubik.config.config import config_datalake
 
