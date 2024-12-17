@@ -691,10 +691,15 @@ class PortfolioOptimizer:
                 else:
                     optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.round(F.col(c), 4))
 
-        cols_date = ['clan_date', 'deal_signing_date', 'expiration_date']
-
-        for c in cols_date:
-            optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(c, F.to_date(F.col(c), "dd-MMM-yyyy"))
+        optimized_cartera_spark_df = (
+            optimized_cartera_spark_df.withColumn(
+                'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
+            ).withColumn(
+                'clan_date',F.to_date(F.col('clan_date'),'yyyy-MM-dd')
+            ).withColumn(
+                'deal_signing_date', F.to_date(F.col('deal_signing_date'), 'yyyy-MM-dd')
+            )
+        )
 
         # Adding concat column and dropping id for ordering.
         optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
