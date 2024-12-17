@@ -974,7 +974,7 @@ class SecuritizationProcess:  # pragma: no cover
         facilities_tr = portfolio_optimizer.build_importe_titulizable(df_limites_individuales, dict_lim_ind,
                                                                       individual_limits_df, limits_indv)
         facilities_excluded_df = facilities_tr.filter(F.col("excluded") == 1)
-        optimized_securizations_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr)
+        optimized_securizations_df, final_limit_dictionary_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr)
 
         self.logger.info(
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
@@ -1004,7 +1004,8 @@ class SecuritizationProcess:  # pragma: no cover
         path_limites_only = 'limites'  # limites
         path_constantes = 'constants'  # df_constantes
         path_excluidas = 'facilities_excluded'  # exlcuidas de la sabana inicial
-        path_facilities_total = 'cartera_titulizar'  # df_cartera
+        path_facilities_total = 'cartera_titulizar'
+        path_limites_dictionary_concat = 'limits_dictionary_concat'# df_cartera
 
         # ADJUSTING partition in dataframe outputs
         df_securizations_for_algorithm = df_securizations_for_algorithm.withColumn(
@@ -1025,6 +1026,19 @@ class SecuritizationProcess:  # pragma: no cover
 
         optimized_securizations_df = optimized_securizations_df.withColumn(
             "closing_date", F.lit(self.data_date)
+        )
+
+        final_limit_dictionary_df = final_limit_dictionary_df.withColumn(
+            "closing_date", F.lit(self.data_date)
+        )
+
+        self.dslb_writer.write_df_to_sb(
+            final_limit_dictionary_df,
+            self.paths.path_algorithm_output,
+            path_limites_dictionary_concat,
+            "parquet",
+            "overwrite",
+            partition_cols=["closing_date"],
         )
 
         self.dslb_writer.write_df_to_sb(
@@ -1073,9 +1087,10 @@ class SecuritizationProcess:  # pragma: no cover
         )
 
         # Writing algorithm outputs to postgres, for MicroStrategy population
-        self.postgre_srvc.write(limites_total, self.parameters['POSTGRE_LIMITS_TABLE'])
-        self.postgre_srvc.write(df_constantes, self.parameters['POSTGRE_SECURIZATIONS_CONSTANT'])
-        self.postgre_srvc.write(facilities_excluded_df, self.parameters['POSTGRE_ALFORITHM_FACILITIES_EXCLUDED'])
-        self.postgre_srvc.write(optimized_securizations_df, self.parameters['POSTGRE_ALFORITHM_FULL_OUTPUT'])
+        self.postgre_srvc.write(limites_total, self.paths.postgre_limits_table)
+        self.postgre_srvc.write(df_constantes, self.paths.postgre_securizations_constant_table)
+        self.postgre_srvc.write(facilities_excluded_df, self.paths.postgre_algorithm_facilities_excluded_table)
+        self.postgre_srvc.write(optimized_securizations_df, self.paths.postgre_algorithm_full_output_table)
+        self.postgre_srvc.write(final_limit_dictionary_df, self.paths.postgre_algorithm_limit_dictionary)
 
         return 0

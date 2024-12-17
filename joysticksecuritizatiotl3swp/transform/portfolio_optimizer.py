@@ -665,8 +665,23 @@ class PortfolioOptimizer:
                 break
 
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(df)
+        final_limit_dictionary_df = self.build_limits_output_df(l_lim_marcados, l_lim_consumidos, l_max_limites, l_importe_consumidos)
+        return optimized_porfolio_df, final_limit_dictionary_df
 
-        return optimized_porfolio_df
+    def build_limits_output_df(self, l_lim_marcados, l_lim_consumidos, l_max_limites, l_importe_consumidos):
+        l_lim_marcados_df = pd.DataFrame(list(l_lim_marcados.items()), columns=['limite', 'valor_launchpad'])
+        l_lim_consumidos_df = pd.DataFrame(list(l_lim_consumidos.items()), columns=['limite', 'valor_consumido'])
+        l_max_limites_df = pd.DataFrame(list(l_max_limites.items()), columns=['limite', 'importe_máximo'])
+        l_importe_consumidos_df = pd.DataFrame(list(l_importe_consumidos.items()), columns=['limite', 'importe_consumido'])
+
+        l_lim_marcados_df_sp = self.dataproc.getSparkSession().createDataFrame(l_lim_marcados_df).fillna(0)
+        l_lim_consumidos_df_sp = self.dataproc.getSparkSession().createDataFrame(l_lim_consumidos_df).fillna(0)
+        l_max_limites_df_sp = self.dataproc.getSparkSession().createDataFrame(l_max_limites_df).fillna(0)
+        l_importe_consumidos_df_sp = self.dataproc.getSparkSession().createDataFrame(l_importe_consumidos_df).fillna(0)
+
+        limits_concat_df = l_lim_marcados_df_sp.join(l_lim_consumidos_df_sp, ['limite']).join(l_max_limites_df_sp, ['limite']).join(l_importe_consumidos_df_sp, ['limite'])
+
+        return limits_concat_df
 
     def build_df_with_securitization_portfolio_optimized(self, cartera_pd_df):
 
@@ -695,7 +710,7 @@ class PortfolioOptimizer:
             optimized_cartera_spark_df.withColumn(
                 'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
             ).withColumn(
-                'clan_date',F.to_date(F.col('clan_date'),'yyyy-MM-dd')
+                'clan_date', F.to_date(F.col('clan_date'), 'yyyy-MM-dd')
             ).withColumn(
                 'deal_signing_date', F.to_date(F.col('deal_signing_date'), 'yyyy-MM-dd')
             )
