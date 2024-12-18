@@ -9,6 +9,9 @@ class Utilities:
 
     @staticmethod
     def last_partition(p_path: str, campo: str):
+        """
+        Get the last partition of an s3 path.
+        """
         datio_path = DatioFileSystem().get().qualify(p_path)
         fs = datio_path.fileSystem()
         path = datio_path.path()
@@ -45,6 +48,9 @@ class Utilities:
 
     @staticmethod
     def get_fecha(fecha_ini: str, ndays: int, op: str = 'add'):
+        """
+        Add or subtract ndays to a date
+        """
         if (op == 'add'):
             d = fecha_ini + timedelta(days=ndays)
         else:

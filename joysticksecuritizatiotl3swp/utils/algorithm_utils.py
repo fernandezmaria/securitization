@@ -7,6 +7,9 @@ class SecuritizationUtils:
 
     @staticmethod
     def get_securization_type(limits_df):
+        """
+        Get securitization type
+        """
         tipo_titulizacion = limits_df.where(F.col('limit_type') == 'portfolio_type').select('corporate_loan_flag',
                                                                                             'project_finance_flag')
         corporate_flag = tipo_titulizacion.select('corporate_loan_flag').collect()[0].corporate_loan_flag
@@ -20,12 +23,18 @@ class SecuritizationUtils:
 
     @staticmethod
     def get_securitization_escenario_and_date(limits_df):
+        """
+        Get securitization escenario and date
+        """
         securitization_escenario, securitization_date = \
             [(x.name_list_desc, x.limit_date) for x in limits_df.select(*limits_snapshot).distinct().collect()][0]
         return securitization_escenario, securitization_date
 
     @staticmethod
     def cast_facilities_df(cols_type, facilities_pandas_df):
+        """
+        Cast pandas df to types for building spark df.
+        """
         # listado de: columna - tipo de dato
 
         # en formato diccionario

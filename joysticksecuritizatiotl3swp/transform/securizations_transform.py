@@ -40,6 +40,9 @@ class SecurizationsTransform:
         self.non_ig_limit = non_ig_limit
 
     def build_ci_df(self):
+        """
+        Build CI dataframe.
+        """
         data_date = Utilities.last_partition(self.path_ci, self.ci_date_field)
 
         ci_df = self.raw_ci_df.where(F.col(self.ci_date_field) == data_date

@@ -103,7 +103,9 @@ class PortfolioOptimizer:
         return float(portfolio_size)
 
     def build_dict_individual_limits(self, individual_limits_df):
-
+        """
+        Build individual limits dictionary from the individual limits DataFrame.
+        """
         self.logger.info("Building individual limits dictionary")
 
         limit_field_list = individual_limits_df.select('limit_type', 'campo_datio').collect()
@@ -112,7 +114,9 @@ class PortfolioOptimizer:
         return dict_indiviual_limits
 
     def get_individual_limits(self, total_limits_df):
-
+        """
+        Get individual limits from the total limits DataFrame.
+        """
         self.logger.info("Getting individual limits")
 
         individual_limits_df = total_limits_df.where(F.col('limit_scope') == 'individual')
@@ -120,16 +124,24 @@ class PortfolioOptimizer:
         return individual_limits_df
 
     def get_individual_limits_with_null_values(self, individual_limits_df):
+        """
+        Get individual limits with null values from the DataFrame.
+        """
         limit_types_null_list = individual_limits_df.select('limit_type', 'null_values').collect()
         dict_lim_ind_nul = {row['limit_type']: row['null_values'] for row in limit_types_null_list}
         return dict_lim_ind_nul
 
     def build_individual_limits_list(self, dict_lim_ind):
+        """
+        Build individual limits list from launchpad definition.
+        """
         individual_limits_list = ['limit_' + k for k in dict_lim_ind]
         return individual_limits_list
 
     def apply_limites_individuales(self, limites_total, facilities_df, dict_lim_ind):
-
+        """
+        Build df with applied individual limits defined in launchpad.
+        """
         self.logger.info("Applying individual limits")
 
         limits_indv = []
@@ -305,7 +317,9 @@ class PortfolioOptimizer:
         return facilities_add, limits_indv
 
     def build_importe_titulizable(self, facilities_with_individual_limits_applied_df, dict_lim_ind, limites_ind, limits_indv):
-
+        """
+        Build dataframe with importe titulizable for algorithm and each facility.
+        """
         self.logger.info("Building importe titulizable")
 
         l_pr = [limit.limit_type for limit in
@@ -388,6 +402,9 @@ class PortfolioOptimizer:
         return facilities_with_individual_and_portfolio_limits_applied_and_exclusions_df
 
     def ini_columns(self, lim_portfolio, df):
+        """
+        Initialize columns for the algorithm.
+        """
         consumption_cols = []
 
         for k in lim_portfolio:
@@ -423,7 +440,9 @@ class PortfolioOptimizer:
         return consumption_cols, df
 
     def build_consumed_limits(self, dict_lim_values, dict_lim_port, facilities_df):
-
+        """
+        Build consumed limits dict by the algorithm.
+        """
         consumed_limits_dict = {}  # inicializamos diccionario de consumos
         limit_keys = list(dict_lim_values.keys())  # % marcados en launchad
         keys_fechas = ['maturity_min', 'maturity_max']
@@ -459,13 +478,18 @@ class PortfolioOptimizer:
         return consumed_limits_dict
 
     def build_appliable_limits(self, dict_lim_values, l_lim_consumidos):
+        """
+        Build dictionary with limit-field relation to be applied in algorithm.
+        """
         facilities_keys = list(l_lim_consumidos.keys())
         l_lim_marcados = {key: round(dict_lim_values[key], 4) for key in facilities_keys}
 
         return l_lim_marcados
 
     def build_max_limits(self, l_lim_marcados):
-
+        """
+        Build max limits dictionary from marked limits in launchpad.
+        """
         l_max_limites = {key: (l_lim_marcados[key] * float(self.portfolio_size)) for key in l_lim_marcados}
         return l_max_limites
 
@@ -669,6 +693,9 @@ class PortfolioOptimizer:
         return optimized_porfolio_df, final_limit_dictionary_df
 
     def build_limits_output_df(self, l_lim_marcados, l_lim_consumidos, l_max_limites, l_importe_consumidos):
+        """
+        Function that builds the limits output DataFrame. It joins all the dictionary's used in algorithm.
+        """
         l_lim_marcados_df = pd.DataFrame(list(l_lim_marcados.items()), columns=['limite', 'valor_launchpad'])
         l_lim_consumidos_df = pd.DataFrame(list(l_lim_consumidos.items()), columns=['limite', 'valor_consumido'])
         l_max_limites_df = pd.DataFrame(list(l_max_limites.items()), columns=['limite', 'importe_máximo'])
@@ -683,11 +710,14 @@ class PortfolioOptimizer:
         limits_concat_df = limits_concat_df.withColumn('limit_escenario', F.lit(self.securitization_escenario))
         limits_concat_df = limits_concat_df.withColumn('Limit_type', F.split(F.col('limite'), '-').getItem(0))
         limits_concat_df = limits_concat_df.withColumn('limit', F.split(F.col('limite'), '-').getItem(1))
+        limits_concat_df = limits_concat_df.drop("limite")
 
         return limits_concat_df
 
     def build_df_with_securitization_portfolio_optimized(self, cartera_pd_df):
-
+        """
+        Function that builds the optimized portfolio DataFrame in spark.
+        """
         for column in cartera_pd_df.select_dtypes(include=['object', 'datetime64[ns]']).columns:
             cartera_pd_df[column] = cartera_pd_df[column].astype(str)
 
@@ -719,7 +749,7 @@ class PortfolioOptimizer:
             )
         )
 
-        optimized_cartera_spark_df.withColumn("portfolio_type", F.lit(self.securization_type))
+        optimized_cartera_spark_df=optimized_cartera_spark_df.withColumn("portfolio_type", F.lit(self.securization_type))
 
         # Adding concat column and dropping id for ordering.
         optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
