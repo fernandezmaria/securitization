@@ -749,7 +749,7 @@ class PortfolioOptimizer:
             )
         )
 
-        optimized_cartera_spark_df=optimized_cartera_spark_df.withColumn("portfolio_type", F.lit(self.securization_type))
+        optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn("portfolio_type", F.lit(self.securization_type))
 
         # Adding concat column and dropping id for ordering.
         optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
