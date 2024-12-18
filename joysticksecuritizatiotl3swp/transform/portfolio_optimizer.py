@@ -33,7 +33,6 @@ class PortfolioOptimizer:
         self.securitization_escenario, self.securitization_date = SecuritizationUtils.get_securitization_escenario_and_date(
             limits_processed_df)
 
-
     def get_limit_value(self, limits_df):
         """
         Get the limit value from the limits DataFrame.
