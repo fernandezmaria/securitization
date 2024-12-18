@@ -15,24 +15,6 @@ class LimitsTransform:
         self.limits = LimitsLoader(logger, dataproc, parameters)
         self.key_cols = limits_key_cols
 
-    def get_date(date: str):
-        if date is not None:
-            dates = re.findall(r'\d+', date)
-            if (len(dates) == 3):
-                if (len(dates[0]) == 4):
-                    p_year = dates[0]
-                    p_month = dates[1]
-                    p_day = dates[2]
-                else:
-                    p_day = dates[0]
-                    p_month = dates[1]
-                    p_year = dates[2]
-                return p_day + '-' + p_month + '-' + p_year
-            else:
-                return None
-        else:
-            return None
-
     def transform(self):
         """
         Transform limits

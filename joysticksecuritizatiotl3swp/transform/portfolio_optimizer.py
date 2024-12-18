@@ -33,6 +33,7 @@ class PortfolioOptimizer:
         self.securitization_escenario, self.securitization_date = SecuritizationUtils.get_securitization_escenario_and_date(
             limits_processed_df)
 
+
     def get_limit_value(self, limits_df):
         """
         Get the limit value from the limits DataFrame.
@@ -680,6 +681,9 @@ class PortfolioOptimizer:
         l_importe_consumidos_df_sp = self.dataproc.getSparkSession().createDataFrame(l_importe_consumidos_df).fillna(0)
 
         limits_concat_df = l_lim_marcados_df_sp.join(l_lim_consumidos_df_sp, ['limite']).join(l_max_limites_df_sp, ['limite']).join(l_importe_consumidos_df_sp, ['limite'])
+        limits_concat_df = limits_concat_df.withColumn('limit_escenario', F.lit(self.securitization_escenario))
+        limits_concat_df = limits_concat_df.withColumn('Limit_type', F.split(F.col('limite'), '-').getItem(0))
+        limits_concat_df = limits_concat_df.withColumn('limit', F.split(F.col('limite'), '-').getItem(1))
 
         return limits_concat_df
 
@@ -715,6 +719,8 @@ class PortfolioOptimizer:
                 'deal_signing_date', F.to_date(F.col('deal_signing_date'), 'yyyy-MM-dd')
             )
         )
+
+        optimized_cartera_spark_df.withColumn("portfolio_type", F.lit(self.securization_type))
 
         # Adding concat column and dropping id for ordering.
         optimized_cartera_spark_df = optimized_cartera_spark_df.drop("pk_engine")
