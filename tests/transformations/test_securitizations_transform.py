@@ -1,5 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
+from numpy.ma.testutils import assert_equal
 from pyspark.sql import SparkSession, DataFrame
 from joysticksecuritizatiotl3swp.transform.securizations_transform import SecurizationsTransform
 
@@ -29,6 +31,8 @@ class TestSecuritizationsTransform(unittest.TestCase):
 
         self.securitizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters,
                                                                   self.data_date, self.limits_df)
+
+        self.securitizations_transform.securization_type = "corporate_loan"
 
     @patch('joysticksecuritizatiotl3swp.transform.securizations_transform.Utilities.last_partition',
            return_value='2024-12-12')
@@ -61,37 +65,37 @@ class TestSecuritizationsTransform(unittest.TestCase):
         self.assertTrue("gf_head_office_desc" in result.columns)
         self.assertEqual(result.collect(), expected_output_df.collect())
 
-@patch('joysticksecuritizatiotl3swp.read.catalogue_sector_project.CatalogueSectorProjectLoader.read_catalogue_sector_project_relation')
-def test_build_securization_for_algorithm(self, mock_read_catalogue_sector_project_relation):
-    # Mock the catalogue_sector_project_df
-    catalogue_sector_project = [
-        ("sector1", "subsector1", "2024-12-12"),
-        ("sector2", "subsector2", "2024-12-12"),
-        ("sector3", "subsector3", "2024-12-12")
-    ]
-    schema_catalogue = "project_sector_desc STRING, project_subsector_desc STRING, closing_date STRING"
-    df_catalogue_sector_project = self.spark.createDataFrame(catalogue_sector_project, schema=schema_catalogue)
-    mock_read_catalogue_sector_project_relation.return_value = df_catalogue_sector_project
+    def test_build_securization_for_algorithm(self):
 
-    # Mock the input securizations_df
-    data_securizations = [
-        ("sector1", "ICO España", "BB+1", 0.5, "S", "true", "true", 1, 1000),
-        ("sector2", "Other", "BBB", 0.7, "N", "false", "false", 0, 0)
-    ]
-    schema_securizations = "project_sector_desc STRING, deal_purpose_type STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE, gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT, bei_guaranteed_amount INT"
-    df_securizations = self.spark.createDataFrame(data_securizations, schema=schema_securizations)
+        # Mock the input securizations_df
+        data_securizations = [
+            ("a","BB+1",3.0,"sector1", "ICO España", "BB+1", 0.5, "S", "true", "true", 1, 1000),
+            ("b","AA",2.0,"sector2", "Other", "BBB", 0.7, "N", "false", "false", 0, 0)
+        ]
+        schema_securizations = "watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING, ma_expanded_master_scale_number DOUBLE, project_sector_desc STRING, deal_purpose_type STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE, gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT, bei_guaranteed_amount INT"
+        df_securizations = self.spark.createDataFrame(data_securizations, schema=schema_securizations)
 
-    # Call the build_securization_for_algorithm method
-    result = self.securitizations_transform.build_securization_for_algorithm(df_securizations)
+        # Call the build_securization_for_algorithm method
+        result = self.securitizations_transform.build_securization_for_algorithm(df_securizations)
+        result.show()
 
-    # Expected result
-    expected_data = [
-        ("sector1", "subsector1", "2024-12-12", 1, 0, 1, 1, 1, 1, 1, "2023-01-01"),
-        ("sector2", "subsector2", "2024-12-12", 0, 0, 0, 0, 0, 0, 0, "2023-01-01")
-    ]
-    expected_schema = "project_sector_desc STRING, project_subsector_desc STRING, closing_date STRING, ico_flag INT, non_ig_flag INT, building_project_flag INT, workout_flag INT, sts_payment_flag INT, sts_sm_rw_flag INT, esg_linked_flag INT, bei_flag INT, data_date STRING"
-    expected_output_df = self.spark.createDataFrame(expected_data, schema=expected_schema)
+        expected_data = [
+            ("sector2", "b", "AA", 2.0, "Other", "BBB", 0.7, "N", "false", "false", 0, 0, "subsector2", "2024-12-12", 0,
+             0, 0, 0, 0, 0, 0, 0, "2023-01-01"),
+            ("sector1", "a", "BB+1", 3.0, "ICO España", "BB+1", 0.5, "S", "true", "true", 1, 1000, "subsector1",
+             "2024-12-12", 1, 1, 1, 0, 1, 1, 1, 1, "2023-01-01")
+        ]
 
-    # Assertions
-    self.assertIsInstance(result, DataFrame)
-    self.assertEqual(result.collect(), expected_output_df.collect())
+        expected_schema = """
+            project_sector_desc STRING, watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING,
+            ma_expanded_master_scale_number DOUBLE, deal_purpose_type STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE,
+            gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT,
+            bei_guaranteed_amount INT, project_subsector_desc STRING, closing_date STRING, ico_flag INT, non_ig_flag INT,
+            building_project_flag INT, workout_flag INT, sts_payment_flag INT, sts_sm_rw_flag INT, esg_linked_flag INT,
+            bei_flag INT, data_date STRING
+        """
+
+        # Create DataFrame
+        expected_df = self.spark.createDataFrame(expected_data, schema=expected_schema)
+        assert_equal(expected_df.collect(), result.collect())
+
