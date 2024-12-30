@@ -1,6 +1,6 @@
 [project]
 type = "WORKER"
-version = "1.0.14"
+version = "1.0.15"
 name = "joysticksecuritizatiotl3swp"
 package = "pyspark"
 config = "resources/application.conf"
