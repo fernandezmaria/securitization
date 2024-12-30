@@ -36,7 +36,7 @@ class TestSecuritizationsTransform(unittest.TestCase):
         # Mock the raw_ci_df
         self.securitizations_transform.raw_ci_df = self.spark.createDataFrame(
             [
-                ("2024-12-12""GF", 0.5, "desc1"),
+                ("2024-12-12", "GF", 0.5, "desc1"),
                 ("2024-12-12", "GF", 0.7, "desc2"),
                 ("2024-12-12", "GE", 0.7, "desc2"),
             ],
