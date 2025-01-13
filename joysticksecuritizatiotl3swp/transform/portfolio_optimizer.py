@@ -482,7 +482,7 @@ class PortfolioOptimizer:
         Build dictionary with limit-field relation to be applied in algorithm.
         """
         facilities_keys = list(l_lim_consumidos.keys())
-        l_lim_marcados = {key: round(dict_lim_values[key], 4) for key in facilities_keys}
+        l_lim_marcados = {key: round(dict_lim_values[key], 7) for key in facilities_keys}
 
         return l_lim_marcados
 
