@@ -408,25 +408,25 @@ class PortfolioOptimizer:
         consumption_cols = []
 
         for k in lim_portfolio:
-            df['limit_' + k] = 1.0000
+            df['limit_' + k] = 1.0000000
             df['max_portfolio_size_' + k] = self.portfolio_size
-            df['consumido_' + k] = 0.0000
-            df['importe_consumido_' + k] = 0.0000
+            df['consumido_' + k] = 0.0000000
+            df['importe_consumido_' + k] = 0.0000000
             consumption_cols.append('limit_' + k)
             consumption_cols.append('max_portfolio_size_' + k)
             consumption_cols.append('consumido_' + k)
             consumption_cols.append('importe_consumido_' + k)
 
         df['selected'] = 0  # si se incluye en la cartera
-        df['limit_portfolio'] = 1.0000  # limite más restrictivo a nivel portfolio
+        df['limit_portfolio'] = 1.0000000  # limite más restrictivo a nivel portfolio
         df[
-            'porcentaje_portfolio_size'] = 0.0000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
-        df['importe_optimo'] = 0.0000  # importe que se incluye de la facility
+            'porcentaje_portfolio_size'] = 0.0000000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
+        df['importe_optimo'] = 0.0000000  # importe que se incluye de la facility
         df['ranking_candidata'] = 0  # orden de prioridad en el modelo
         df['ranking_selected'] = 0  # orden de selección en la cartera final
-        df['importe_optimo_acumulado'] = 0.0000  # suma de los importes de las facilities incluidas en la cartera
-        df['porcentaje_portfolio_size_acumulado'] = 0.0000  # % de la cartera (portfolio_size) que se ha ido consumiendo
-        df['porcentaje_optimo'] = 0.0000  # % sobre el importe suceptible de la facility que se toma en la cartera
+        df['importe_optimo_acumulado'] = 0.0000000  # suma de los importes de las facilities incluidas en la cartera
+        df['porcentaje_portfolio_size_acumulado'] = 0.0000000  # % de la cartera (portfolio_size) que se ha ido consumiendo
+        df['porcentaje_optimo'] = 0.0000000  # % sobre el importe suceptible de la facility que se toma en la cartera
 
         # lo incluyo como columna el máximo importe a titulizar
         df['limit_portfolio_size'] = self.portfolio_size
@@ -450,14 +450,14 @@ class PortfolioOptimizer:
         for k, v in dict_lim_port.items():
             if (k not in keys_fechas):  # caso base: limite-categoria=valor
                 for k1 in facilities_df[v].unique():  # recojo todos los posibles valores de ese campo en la facility
-                    consumed_limits_dict[k + '-' + str(k1)] = 0.0000
+                    consumed_limits_dict[k + '-' + str(k1)] = 0.0000000
 
                     # si no hay marcado limite se pone a 1.0
                     if (k + '-' + str(k1) not in limit_keys):
-                        valor = 1.0000
+                        valor = 1.0000000
 
                         if (k + '-' + 'total' in limit_keys):  # si es un limite a nivel global como TODOS los grupos
-                            valor = round(float(dict_lim_values[k + '-' + 'total']), 4)
+                            valor = round(float(dict_lim_values[k + '-' + 'total']), 7)
                             # valor = round(float(dict_lim_values[k + '-' + 'total'].replace(',', '.')), 4)
                         dict_lim_values[k + '-' + str(k1)] = valor
 
@@ -467,11 +467,11 @@ class PortfolioOptimizer:
                 f_tope = np.datetime64(Utilities.get_fecha(self.securitization_date, dias)).astype('datetime64[D]')
 
                 for k1 in facilities_df[v].unique().astype('datetime64[D]'):
-                    consumed_limits_dict[k + '-' + str(k1)] = 0.0000
+                    consumed_limits_dict[k + '-' + str(k1)] = 0.0000000
                     if (((k == 'maturity_min') & (k1 >= f_tope)) | ((k == 'maturity_max') & (k1 <= f_tope))):
                         valor = 1.0000  # valor si el limite no aplica
                     else:
-                        valor = round(float(dict_lim_values[lk]), 4)  # valor si el limite aplica
+                        valor = round(float(dict_lim_values[lk]), 7)  # valor si el limite aplica
 
                     dict_lim_values[k + '-' + str(k1)] = valor
 
@@ -581,7 +581,7 @@ class PortfolioOptimizer:
 
         # generamos un diccionario tb de importe consumido por cada limite
         l_importe_consumidos = l_lim_consumidos.copy()
-        importe_acumulado = 0.0000
+        importe_acumulado = 0.0000000
         porcentaje_portfolio_size_acumulado = 0.0000000
         col_imp = 'importe_titulizable'
         selected_facilities = []
@@ -596,7 +596,7 @@ class PortfolioOptimizer:
             df.loc[i, 'ranking_candidata'] = i + 1
 
             # PASO_2: %máximo a titulizar de la facility
-            max_proportion = 1.0000
+            max_proportion = 1.0000000
 
             if (importe_acumulado + expediente_importe) > self.portfolio_size:
                 max_proportion = (self.portfolio_size - importe_acumulado) / expediente_importe
@@ -611,10 +611,10 @@ class PortfolioOptimizer:
                 df.loc[i, 'limit_' + k] = l_lim_marcados[v]
                 df.loc[i, 'max_portfolio_size_' + k] = l_max_limites[v]
                 min_portfolio = min(min_portfolio, l_lim_marcados[v])
-                disponible_proportion = round(float(l_lim_marcados[v] - l_lim_consumidos[v]), 4)
+                disponible_proportion = round(float(l_lim_marcados[v] - l_lim_consumidos[v]), 7)
 
                 if (disponible_proportion < 0):
-                    disponible_proportion = 0.0000
+                    disponible_proportion = 0.0000000
 
                 df.loc[i, 'disponible_' + k] = disponible_proportion
                 min_lim = min(min_lim, disponible_proportion)
@@ -666,9 +666,9 @@ class PortfolioOptimizer:
                 if (df.loc[i, 'candidata'] == 1):
                     min_disponible = 1.0
                     for k, v in keys_f.items():
-                        disponible_proportion = round(float(l_lim_marcados[v] - l_lim_consumidos[v]), 4)
+                        disponible_proportion = round(float(l_lim_marcados[v] - l_lim_consumidos[v]), 7)
                         if (disponible_proportion < 0):
-                            disponible_proportion = 0.0000
+                            disponible_proportion = 0.0000000
                         if (disponible_proportion == 0):
                             min_disponible = min(min_disponible, disponible_proportion)
                             if (l_lim_marcados[v] == 0):
