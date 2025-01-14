@@ -25,7 +25,7 @@ class PortfolioOptimizer:
         self.data_date = data_date
         self.paths = Paths(parameters=self.parameters)
 
-        self.portfolio_size = self.build_portfolio_size(limits_processed_with_ctes_df)
+        self.portfolio_size = round(float(self.build_portfolio_size(limits_processed_with_ctes_df)),7)
         self.facility_type_dict = facility_type
         self.key_facility = key_facility
         self.securization_type = SecuritizationUtils.get_securization_type(limits_processed_df)
@@ -469,7 +469,7 @@ class PortfolioOptimizer:
                 for k1 in facilities_df[v].unique().astype('datetime64[D]'):
                     consumed_limits_dict[k + '-' + str(k1)] = 0.0000000
                     if (((k == 'maturity_min') & (k1 >= f_tope)) | ((k == 'maturity_max') & (k1 <= f_tope))):
-                        valor = 1.0000  # valor si el limite no aplica
+                        valor = 1.0000000  # valor si el limite no aplica
                     else:
                         valor = round(float(dict_lim_values[lk]), 7)  # valor si el limite aplica
 
@@ -664,7 +664,7 @@ class PortfolioOptimizer:
 
             else:
                 if (df.loc[i, 'candidata'] == 1):
-                    min_disponible = 1.0
+                    min_disponible = 1.0000000
                     for k, v in keys_f.items():
                         disponible_proportion = round(float(l_lim_marcados[v] - l_lim_consumidos[v]), 7)
                         if (disponible_proportion < 0):
