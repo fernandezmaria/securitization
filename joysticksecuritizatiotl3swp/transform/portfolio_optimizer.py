@@ -25,7 +25,7 @@ class PortfolioOptimizer:
         self.data_date = data_date
         self.paths = Paths(parameters=self.parameters)
 
-        self.portfolio_size = round(float(self.build_portfolio_size(limits_processed_with_ctes_df)),7)
+        self.portfolio_size = round(float(self.build_portfolio_size(limits_processed_with_ctes_df)), 7)
         self.facility_type_dict = facility_type
         self.key_facility = key_facility
         self.securization_type = SecuritizationUtils.get_securization_type(limits_processed_df)
