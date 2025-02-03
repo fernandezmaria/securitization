@@ -50,6 +50,7 @@ class Paths:  # pragma: no cover
         self.path_launchpad = parameters["PATH_LAUNCHPAD"]
         self.sector_project_catalogue_table = parameters["SECTOR_PROJECT_CATALOGUE_TABLE"]
         self.limits_datio_field_mapping_table = parameters["LIMITS_DATIO_FIELD_MAPPING_TABLE"]
+        self.limits_launchpad_table = parameters["LIMITS_LAUNCHPAD_TABLE"]
 
         # Postgre paths & output s3
         self.postgre_limits_table = parameters['POSTGRE_LIMITS_TABLE']

@@ -12,17 +12,17 @@ class TestLimitsLoader(unittest.TestCase):
         self.spark = SparkSession.builder.master("local").appName("test").getOrCreate()
         self.limits_loader = LimitsLoader(self.logger, self.dataproc, self.parameters)
 
-    @patch('joysticksecuritizatiotl3swp.read.limits.Utilities.last_partition')
-    def test_read_limits(self, mock_last_partition):
+    @patch('joysticksecuritizatiotl3swp.read.limits.Utilities.get_last_value_partition_table')
+    def test_read_limits(self, mock_get_last_value_partition_table):
         # Mock the return value of last_partition
-        mock_last_partition.return_value = "20230101"
+        mock_get_last_value_partition_table.return_value = "20230101"
 
         # Mock the DataFrame returned by dataproc.read().csv()
         mock_df = self.spark.createDataFrame(
             [("1", "1000,00"), ("2", "2000,00")],
             schema="id STRING, limit_value STRING"
         )
-        self.dataproc.read().option().option().option().csv.return_value = mock_df
+        self.dataproc.read().table.return_value.filter.return_value = mock_df
 
         # Call the method
         result = self.limits_loader.read_limits()
