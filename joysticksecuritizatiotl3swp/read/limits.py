@@ -22,7 +22,7 @@ class LimitsLoader:
         self.limits_datio_field_mapping_table = self.paths.limits_datio_field_mapping_table
         self.limits_datio_field_mapping_date_field = "closing_date"
         self.limits_table = self.paths.limits_launchpad_table
-        self.limits_date_field = "gf_odate_date_id"
+        self.limits_date_field = "gf_loaded_limits_list_date"
 
         self.mapped_columns = limits_column_mapping
 
