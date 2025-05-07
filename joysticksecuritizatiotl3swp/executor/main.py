@@ -945,37 +945,6 @@ class SecuritizationProcess:  # pragma: no cover
 
         cubo_aud.cache()
 
-        # LIMTS PROCESS
-        limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
-        limits_transformed_df_con_ctes = limits_transform.transform()
-        limits_transformed_df = limits_transformed_df_con_ctes.where(F.col('limit_type') != 'constant_type').withColumn(
-            "limit_value", F.col("limit_value").cast("float")
-        )
-
-        # SECURIZATIONS FOR ALGORITHM
-        securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df)
-        df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
-        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud)
-
-        # ALGORITMO
-        portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, self.data_date, limits_transformed_df,
-                                                 limits_transformed_df_con_ctes)
-        limites = portfolio_optimizer.get_limit_value(limits_transformed_df)
-        limites_total = portfolio_optimizer.calculate_limits_total(limites)
-
-        facilities_t = portfolio_optimizer.build_facilities(df_securizations_for_algorithm)
-
-        individual_limits_df = portfolio_optimizer.get_individual_limits(limites_total)
-        dict_lim_ind = portfolio_optimizer.build_dict_individual_limits(individual_limits_df)
-        df_limites_individuales, limits_indv = portfolio_optimizer.apply_limites_individuales(limites_total,
-                                                                                              facilities_t,
-                                                                                              dict_lim_ind)
-
-        facilities_tr = portfolio_optimizer.build_importe_titulizable(df_limites_individuales, dict_lim_ind,
-                                                                      individual_limits_df, limits_indv)
-        facilities_excluded_df = facilities_tr.filter(F.col("excluded") == 1)
-        optimized_securizations_df, final_limit_dictionary_df = portfolio_optimizer.build_portfolio_limits(limites_total, facilities_tr)
-
         self.logger.info(
             "Main.execute_process ended. Output count = " + str(cubo_aud.count())
         )
@@ -998,6 +967,48 @@ class SecuritizationProcess:  # pragma: no cover
             "overwrite",
             partition_cols=["clan_date"],
         )
+
+        if self.parameters["STAGE"] == "ALGORITHM":
+            self.logger.info("Executing algorithm")
+            self.execute_algorithm(cubo_aud)
+        else:
+            return 0
+
+    def execute_algorithm(self, cubo_aud):
+
+        # LIMTS PROCESS
+        limits_transform = LimitsTransform(self.logger, self.dataproc, self.parameters, self.data_date)
+        limits_transformed_df_con_ctes = limits_transform.transform()
+        limits_transformed_df = limits_transformed_df_con_ctes.where(F.col('limit_type') != 'constant_type').withColumn(
+            "limit_value", F.col("limit_value").cast("float")
+        )
+
+        # SECURIZATIONS FOR ALGORITHM
+        securizations_transform = SecurizationsTransform(self.logger, self.dataproc, self.parameters, self.data_date,
+                                                         limits_transformed_df)
+        df_securizations_for_algorithm = securizations_transform.build_securization_for_algorithm(cubo_aud)
+        df_constantes = securizations_transform.build_constants_df(limits_transformed_df, cubo_aud)
+
+        # ALGORITMO
+        portfolio_optimizer = PortfolioOptimizer(self.logger, self.dataproc, self.parameters, self.data_date,
+                                                 limits_transformed_df,
+                                                 limits_transformed_df_con_ctes)
+        limites = portfolio_optimizer.get_limit_value(limits_transformed_df)
+        limites_total = portfolio_optimizer.calculate_limits_total(limites)
+
+        facilities_t = portfolio_optimizer.build_facilities(df_securizations_for_algorithm)
+
+        individual_limits_df = portfolio_optimizer.get_individual_limits(limites_total)
+        dict_lim_ind = portfolio_optimizer.build_dict_individual_limits(individual_limits_df)
+        df_limites_individuales, limits_indv = portfolio_optimizer.apply_limites_individuales(limites_total,
+                                                                                              facilities_t,
+                                                                                              dict_lim_ind)
+
+        facilities_tr = portfolio_optimizer.build_importe_titulizable(df_limites_individuales, dict_lim_ind,
+                                                                      individual_limits_df, limits_indv)
+        facilities_excluded_df = facilities_tr.filter(F.col("excluded") == 1)
+        optimized_securizations_df, final_limit_dictionary_df = portfolio_optimizer.build_portfolio_limits(
+            limites_total, facilities_tr)
 
         # ESCRITURAS ALGORITHM
         path_facilities = 'facilities'  # facilities_df
