@@ -2,8 +2,11 @@ from typing import Dict
 
 from dataproc_sdk.dataproc_sdk_datiopysparksession import datiopysparksession
 from dataproc_sdk.dataproc_sdk_utils.logging import get_user_logger
+import pyspark.sql.functions as F
 
 from joysticksecuritizatiotl3swp.executor.main import SecuritizationProcess
+from joysticksecuritizatiotl3swp.read.paths import Paths
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
 
 
 class DataprocExperiment:
@@ -37,6 +40,44 @@ class DataprocExperiment:
         self.logger.info("Main.main")
 
         ret_code = 0
+
+        if parameters["STAGE"] == "ALGORITHM":
+            sandbox_path = ""
+            if parameters["OUTPUT_MODE"] == "DEVELOPMENT":
+                sandbox_path = parameters["SANDBOX_PATH_DEV"]
+            else:
+                sandbox_path = parameters["SANDBOX_PATH_PROD"]
+
+            last_date_available_limits = (
+                Utilities.get_last_value_partition_table(
+                    parameters["LIMITS_LAUNCHPAD_TABLE"],
+                    "gf_loaded_limits_list_date")
+            )
+
+            portfolio_date = (
+                dataproc.read().table(parameters["LIMITS_LAUNCHPAD_TABLE"])
+                .filter(F.col("gf_loaded_limits_list_date") == last_date_available_limits)
+                .filter(F.col("gf_loaded_limits_list_category_name") == "portfolio_date")
+                .select("gf_first_concept_desc")
+                .collect()
+            )
+
+            portfolio_date = portfolio_date.replace("-", "")
+
+            if (Utilities.check_for_partition(
+                    f"{sandbox_path}mrr", "clan_date", portfolio_date)):
+                cubo_df = (
+                    dataproc.read()
+                    .parquet(f"{sandbox_path}mrr")
+                    .filter(F.col("closing_date") == portfolio_date)
+                )
+
+                SecuritizationProcess(
+                    self.logger, spark, dataproc, parameters
+                ).execute_algorithm(cubo_df)
+
+            self.logger.info(
+                "Portfolio date %s not found in MRR partition. Executing full engine." % portfolio_date)
 
         try:
             SecuritizationProcess(

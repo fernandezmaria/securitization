@@ -31,6 +31,15 @@ class SecuritizationUtils:
         return securitization_escenario, securitization_date
 
     @staticmethod
+    def get_limits_portfolio_date(limits_df):
+        """
+        Get securitization portfolio_date
+        """
+        portfolio_date = \
+            [(x.name_list_desc, x.limit_date) for x in limits_df.select(*limits_snapshot).distinct().collect()][0]
+        return
+
+    @staticmethod
     def cast_facilities_df(cols_type, facilities_pandas_df):
         """
         Cast pandas df to types for building spark df.

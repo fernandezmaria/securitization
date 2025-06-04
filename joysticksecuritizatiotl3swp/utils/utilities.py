@@ -23,6 +23,21 @@ class Utilities:
         return max(l_fechas)  # fecha mayor
 
     @staticmethod
+    def check_for_partition(p_path: str, campo: str, value: str):
+        """
+        Get the last partition of an s3 path.
+        """
+        datio_path = DatioFileSystem().get().qualify(p_path)
+        fs = datio_path.fileSystem()
+        path = datio_path.path()
+        path_list = fs.listStatus(path)
+        paths = [path.getPath().toString() for path in path_list]  # listado de todos los paths de la ruta pasada
+
+        l_fechas = [element.split(campo + '=')[1] for element in paths if
+                    campo in element]  # listado de todas las fechas
+        return value in l_fechas
+
+    @staticmethod
     def get_last_value_partition_table(bbdd_table_concat: str, partition_field: str):
         """
         Takes max value of the specified partition in a bbdd & table.
