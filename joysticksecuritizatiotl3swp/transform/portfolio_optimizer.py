@@ -478,6 +478,7 @@ class PortfolioOptimizer:
         """
         Build consumed limits dict by the algorithm.
         """
+        self.logger.info("Building consumed limits")
         consumed_limits_dict = {}  # inicializamos diccionario de consumos
         limit_keys = list(dict_lim_values.keys())  # % marcados en launchad
         keys_fechas = ['maturity_min', 'maturity_max']
@@ -502,6 +503,8 @@ class PortfolioOptimizer:
             else:  # no es un limite directo y hay que calcular fechas: limite-ndias=valor
                 lk = [limit_key for limit_key in limit_keys if k in limit_key][0]
                 dias = int(lk[len(k) + 1:])  # ndias que marcan fecha tope
+                self.logger.info(
+                    f"securitization_date {self.securitization_date}")
                 f_tope = np.datetime64(Utilities.get_fecha(
                     self.securitization_date, dias)).astype('datetime64[D]')
 
@@ -515,6 +518,7 @@ class PortfolioOptimizer:
 
                     dict_lim_values[k + '-' + str(k1)] = valor
 
+        self.logger.info("Consumed limits built successfully")
         return consumed_limits_dict
 
     def build_appliable_limits(self, dict_lim_values, l_lim_consumidos):

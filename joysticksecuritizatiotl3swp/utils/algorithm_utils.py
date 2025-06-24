@@ -12,7 +12,8 @@ class SecuritizationUtils:
         """
         tipo_titulizacion = limits_df.where(F.col('limit_type') == 'portfolio_type').select('corporate_loan_flag',
                                                                                             'project_finance_flag')
-        corporate_flag = tipo_titulizacion.select('corporate_loan_flag').collect()[0].corporate_loan_flag
+        corporate_flag = tipo_titulizacion.select('corporate_loan_flag').collect()[
+            0].corporate_loan_flag
 
         tipo = 'project_finance'
 
@@ -27,17 +28,9 @@ class SecuritizationUtils:
         Get securitization escenario and date
         """
         securitization_escenario, securitization_date = \
-            [(x.name_list_desc, x.limit_date) for x in limits_df.select(*limits_snapshot).distinct().collect()][0]
+            [(x.name_list_desc, x.limit_date)
+             for x in limits_df.select(*limits_snapshot).distinct().collect()][0]
         return securitization_escenario, securitization_date
-
-    @staticmethod
-    def get_limits_portfolio_date(limits_df):
-        """
-        Get securitization portfolio_date
-        """
-        portfolio_date = \
-            [(x.name_list_desc, x.limit_date) for x in limits_df.select(*limits_snapshot).distinct().collect()][0]
-        return
 
     @staticmethod
     def cast_facilities_df(cols_type, facilities_pandas_df):
@@ -54,15 +47,19 @@ class SecuritizationUtils:
                 facilities_pandas_df[r] = facilities_pandas_df[r].astype('str')
             elif (cols_type[r] == 'date'):
                 # raw_data[r] = raw_data[r].astype('datetime64')
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('datetime64[D]')
+                facilities_pandas_df[r] = facilities_pandas_df[r].astype(
+                    'datetime64[D]')
                 # print(r)
             elif (cols_type[r] == 'boolean'):
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('bool')
+                facilities_pandas_df[r] = facilities_pandas_df[r].astype(
+                    'bool')
             elif (cols_type[r] == 'int'):
                 facilities_pandas_df[r] = facilities_pandas_df[r].astype('int')
             elif (cols_type[r] == 'double'):
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
+                facilities_pandas_df[r] = facilities_pandas_df[r].astype(
+                    'float')
             elif ('decimal' in cols_type[r]):
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
+                facilities_pandas_df[r] = facilities_pandas_df[r].astype(
+                    'float')
 
         return facilities_pandas_df
