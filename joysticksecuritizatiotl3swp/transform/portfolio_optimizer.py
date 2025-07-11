@@ -619,10 +619,14 @@ class PortfolioOptimizer:
 
         col_types = list(facilities_disponibles.dtypes)
         cols_type = dict(col_types)
+        cols_type_facilities = SecuritizationUtils.get_facilities_dtype(cols_type)
 
         raw_data = facilities_disponibles.toPandas()
-        raw_data = SecuritizationUtils.cast_facilities_df(cols_type, raw_data)
-
+        self.logger.info("Facilities DataFrame types")
+        self.logger.info(raw_data.dtypes)
+        raw_data = SecuritizationUtils.cast_facilities_df(cols_type_facilities, raw_data)
+        self.logger.info("Casting facilities DataFrame to correct types")
+        self.logger.info(raw_data.dtypes)
         l_lim_consumidos = self.build_consumed_limits(
             dict_lim_values, dict_lim_port, raw_data)
         l_lim_marcados = self.build_appliable_limits(
