@@ -57,7 +57,7 @@ class SecuritizationUtils:
             elif cols_type[r] == 'float':
                 facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
         return facilities_pandas_df
-    
+
     @staticmethod
     def get_facilities_dtype(cols_type):
         """
@@ -114,4 +114,3 @@ class SecuritizationUtils:
         result = cols_type.copy()
         result.update(extra_types)
         return result
-
