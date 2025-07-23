@@ -109,7 +109,8 @@ class SecuritizationUtils:
             'importe_optimo_acumulado': 'float',
             'porcentaje_portfolio_size_acumulado': 'float',
             'porcentaje_optimo': 'float',
-            'limit_portfolio_size': 'float'
+            'limit_portfolio_size': 'float',
+            'clan_date': 'date'
         }
         result = cols_type.copy()
         result.update(extra_types)

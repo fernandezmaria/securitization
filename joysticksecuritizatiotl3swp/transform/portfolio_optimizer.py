@@ -619,7 +619,15 @@ class PortfolioOptimizer:
 
         col_types = list(facilities_disponibles.dtypes)
         cols_type = dict(col_types)
+        if 'clan_date' in cols_type:
+            self.logger.info("clan_date column found")
+        else:
+            self.logger.info("clan_date column not found")
         cols_type_facilities = SecuritizationUtils.get_facilities_dtype(cols_type)
+        if 'clan_date' in cols_type_facilities:
+            self.logger.info("clan_date column in facilities found")
+        else:
+            self.logger.info("clan_date column not found in facilities")
 
         raw_data = facilities_disponibles.toPandas()
         self.logger.info("Facilities DataFrame types")
@@ -629,10 +637,14 @@ class PortfolioOptimizer:
         self.logger.info(raw_data.dtypes)
         l_lim_consumidos = self.build_consumed_limits(
             dict_lim_values, dict_lim_port, raw_data)
+        self.logger.info("Consumed limits built successfully")
         l_lim_marcados = self.build_appliable_limits(
             dict_lim_values, l_lim_consumidos)
+        self.logger.info("Appliable limits built successfully")
         l_max_limites = self.build_max_limits(l_lim_marcados)
+        self.logger.info("Max limits built successfully")
         cols_test, df = self.ini_columns(lim_portfolio, raw_data)
+        self.logger.info("Columns initialized for algorithm")
 
         # generamos un diccionario tb de importe consumido por cada limite
         l_importe_consumidos = l_lim_consumidos.copy()
@@ -754,6 +766,7 @@ class PortfolioOptimizer:
             if (importe_acumulado >= self.portfolio_size):
                 break
 
+        self.logger.info("Portfolio limits built successfully")
         optimized_porfolio_df = self.build_df_with_securitization_portfolio_optimized(
             df)
         final_limit_dictionary_df = self.build_limits_output_df(
@@ -799,10 +812,12 @@ class PortfolioOptimizer:
         """
         Function that builds the optimized portfolio DataFrame in spark.
         """
+        self.logger.info("Building optimized secu portfolio df")
         for column in cartera_pd_df.select_dtypes(include=['object', 'datetime64[ns]']).columns:
             cartera_pd_df[column] = cartera_pd_df[column].astype(str)
 
         # Creamos dataframe de spark
+        self.logger.info(cartera_pd_df.dtypes)
         optimized_cartera_spark_df = self.dataproc.getSparkSession(
         ).createDataFrame(cartera_pd_df).fillna(0)
 
@@ -823,6 +838,13 @@ class PortfolioOptimizer:
                     optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(
                         c, F.round(F.col(c), 4))
 
+        self.logger.info("Optimized portfolio DataFrame created in Spark")
+        self.logger.info(optimized_cartera_spark_df.schema)
+        if 'clan_date' in optimized_cartera_spark_df.columns:
+            self.logger.info("clan_date column found, converting to date format")
+            optimized_cartera_spark_df.select("clan_date").show(3)
+        else:
+            self.logger.info("clan_date column not found")
         optimized_cartera_spark_df = (
             optimized_cartera_spark_df.withColumn(
                 'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
