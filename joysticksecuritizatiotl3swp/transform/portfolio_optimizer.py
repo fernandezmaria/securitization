@@ -812,7 +812,7 @@ class PortfolioOptimizer:
             cartera_pd_df[column] = cartera_pd_df[column].astype(str)
 
         # Creamos dataframe de spark
-        self.logger.info(cartera_pd_df.dtypes)
+        self.logger.info(cartera_pd_df.dtypes.to_string())
         optimized_cartera_spark_df = self.dataproc.getSparkSession(
         ).createDataFrame(cartera_pd_df).fillna(0)
 
@@ -833,31 +833,44 @@ class PortfolioOptimizer:
                     optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(
                         c, F.round(F.col(c), 4))
 
-        optimized_cartera_spark_df = (
-            optimized_cartera_spark_df.withColumn(
-                'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
-            ).withColumn(
-                'clan_date', F.to_date(F.col('clan_date'), 'yyyy-MM-dd')
-            ).withColumn(
-                'deal_signing_date', F.to_date(
-                    F.col('deal_signing_date'), 'yyyy-MM-dd')
+        if 'clan_date' in optimized_cartera_spark_df.columns:
+            optimized_cartera_spark_df = (
+                optimized_cartera_spark_df.withColumn(
+                    'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
+                ).withColumn(
+                    'clan_date', F.to_date(F.col('clan_date'), 'yyyy-MM-dd')
+                )
             )
-        )
+        if 'deal_signing_date' in optimized_cartera_spark_df.columns:
+            optimized_cartera_spark_df = (
+                optimized_cartera_spark_df.withColumn(
+                    'deal_signing_date', F.to_date(F.col('deal_signing_date'), 'yyyy-MM-dd')
+                )
+            )
 
         optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(
             "portfolio_type", F.lit(self.securization_type))
 
         # Adding concat column and dropping id for ordering.
-        optimized_cartera_spark_df = optimized_cartera_spark_df.drop(
-            "pk_engine")
-        optimized_cartera_spark_df = (
-            optimized_cartera_spark_df.withColumn(
-                'facility_id',
-                F.concat(
-                    optimized_cartera_spark_df.delta_file_id,
-                    F.lit('_'),
-                    optimized_cartera_spark_df.delta_file_band_id)
+        if "pk_engine" in optimized_cartera_spark_df.columns:
+            optimized_cartera_spark_df = optimized_cartera_spark_df.drop(
+                "pk_engine")
+            self.logger.info("pk_engine column dropped successfully")
+
+        # Create facility_id column if required columns exist
+        required_cols_for_facility_id = ['delta_file_id', 'delta_file_band_id']
+        missing_cols = [col for col in required_cols_for_facility_id if col not in optimized_cartera_spark_df.columns]
+
+        if not missing_cols:
+            optimized_cartera_spark_df = (
+                optimized_cartera_spark_df.withColumn(
+                    'facility_id',
+                    F.concat(
+                        optimized_cartera_spark_df.delta_file_id,
+                        F.lit('_'),
+                        optimized_cartera_spark_df.delta_file_band_id)
+                )
             )
-        )
+            self.logger.info("facility_id column created successfully")
 
         return optimized_cartera_spark_df
