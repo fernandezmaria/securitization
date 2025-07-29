@@ -619,22 +619,17 @@ class PortfolioOptimizer:
 
         col_types = list(facilities_disponibles.dtypes)
         cols_type = dict(col_types)
-        if 'clan_date' in cols_type:
-            self.logger.info("clan_date column found")
-        else:
-            self.logger.info("clan_date column not found")
-        cols_type_facilities = SecuritizationUtils.get_facilities_dtype(cols_type)
-        if 'clan_date' in cols_type_facilities:
-            self.logger.info("clan_date column in facilities found")
-        else:
-            self.logger.info("clan_date column not found in facilities")
+
+        self.logger.info("Facilities Spark DataFrame schema and types")
+        self.logger.info(f"Schema: {facilities_disponibles.schema}")
 
         raw_data = facilities_disponibles.toPandas()
         self.logger.info("Facilities DataFrame types")
-        self.logger.info(raw_data.dtypes)
-        raw_data = SecuritizationUtils.cast_facilities_df(cols_type_facilities, raw_data)
+        self.logger.info(f"Complete dtypes info:\n{raw_data.dtypes.to_string()}")
+
+        raw_data = SecuritizationUtils.cast_facilities_df(cols_type, raw_data)
         self.logger.info("Casting facilities DataFrame to correct types")
-        self.logger.info(raw_data.dtypes)
+        self.logger.info(f"Complete dtypes info:\n{raw_data.dtypes.to_string()}")
         l_lim_consumidos = self.build_consumed_limits(
             dict_lim_values, dict_lim_port, raw_data)
         self.logger.info("Consumed limits built successfully")
@@ -838,13 +833,6 @@ class PortfolioOptimizer:
                     optimized_cartera_spark_df = optimized_cartera_spark_df.withColumn(
                         c, F.round(F.col(c), 4))
 
-        self.logger.info("Optimized portfolio DataFrame created in Spark")
-        self.logger.info(optimized_cartera_spark_df.schema)
-        if 'clan_date' in optimized_cartera_spark_df.columns:
-            self.logger.info("clan_date column found, converting to date format")
-            optimized_cartera_spark_df.select("clan_date").show(3)
-        else:
-            self.logger.info("clan_date column not found")
         optimized_cartera_spark_df = (
             optimized_cartera_spark_df.withColumn(
                 'clan_date', F.to_date(F.col('clan_date'), 'yyyyMMdd')
