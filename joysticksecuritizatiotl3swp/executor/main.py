@@ -8,10 +8,10 @@ from itertools import chain
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from rubik.load.branches import Branches
-from rubik.load.movements import Movements
-from rubik.load.operations import Operations
-from rubik.load.products import Products
+from grubik.services.operations.movements import Movements
 from rubik.utils.partitions import PartitionsUtils
+from grubik.services.operations.facilities import Facilities
+from alfred.general.date_utils import DateUtils
 
 from joysticksecuritizatiotl3swp.configurations.catalogues import (
     get_countries_iso_name_table,
@@ -145,6 +145,10 @@ class SecuritizationProcess:  # pragma: no cover
             ).replace("-", "")
 
         self.logger.info("Date Clan: " + str(date_clan))
+
+        date_clan_formatted = DateUtils.format_date(date_clan, "%Y%m%d", "%Y-%m-%d")
+        self.logger.info("Date Clan Formatted: " + str(date_clan_formatted))
+
         # Fecha IFRS9
         date_ifrs9 = max(
             PartitionsUtils.get_newest_date_data(
@@ -209,7 +213,8 @@ class SecuritizationProcess:  # pragma: no cover
         branches = Branches(self.dataproc, "/data", types_entity=["Global Finance"])
         branches_df = branches.getBranches()
         branches_df = (
-            branches_df.filter(F.col("entity_id").isin("0182", "9016"))
+            branches_df
+            .filter(F.col("entity_id").isin("0182", "9016"))
             .withColumn(
                 "rn",
                 F.row_number().over(
@@ -223,99 +228,66 @@ class SecuritizationProcess:  # pragma: no cover
         )
 
         # Datos de Clan a nivel oficina
-        product_all = Products(product_subtype=Products().getProductsList("GF"))
-        product_all.getProductsList("GF")
-        operations = Operations(
-            self.dataproc, path_data="/data", data_date=date_clan, product=product_all
-        )
+        facilities = Facilities(self.dataproc)
 
-        deals_op = operations.deals_operations(level="oficina", status=None)
-        deals_bal = operations.balance_operations(levels_agg=None, status=None)
+        deals_op = facilities.deals_operations(level="oficina", status=None)
+        deals_bal = facilities.balance_operations(facilities=deals_op, status=None,
+                                                  data_date=date_clan_formatted)
 
-        # Añadir código de cliente y entidad globales
-        deals_cust = (
-            operations._deals_all_columns.filter(F.col("main_owner_type") == "SI")
-            .filter(F.col("branch_role_type").isin("Participating Lender"))
-            .withColumn(
-                "rn",
-                F.row_number().over(
-                    W.partitionBy(
-                        "delta_file_id", "delta_file_band_id", "branch_id", "entity_id"
-                    ).orderBy("total_nominal_eur_amount")
-                ),
-            )
-            .filter("rn==1")
-            .drop("rn")
-            .select(
-                "delta_file_id",
-                "delta_file_band_id",
-                "entity_id",
-                "branch_id",
-                "g_customer_id",
-                "g_entity_id",
-            )
-            .distinct()
-        )
         saldos_oficina = (
             deals_op.select(
-                "delta_file_id",
-                "delta_file_band_id",
-                "project_country_id",
-                "file_product_desc",
-                "financial_product_desc",
-                "seniority_name",
-                "insured_type",
-                "currency_id",
-                "deal_signing_date",
-                "expiration_date",
-                "financial_product_class_desc",
-                "customer_id",
-                "borrower_country_id",
-                "entity_id",
-                "branch_id",
-                "operation_reference_id",
-                "page_id",
-                "project_id",
-                "syndicated_type",
-                "deal_purpose_type",
-                "project_sector_desc",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "g_country_id",
+                "gf_fclty_product_desc",
+                "gf_financial_product_desc",
+                "gf_fclty_trc_srty_type_name",
+                "gf_insured_contract_type_name",
+                "g_currency_id",
+                "gf_deal_signing_date",
+                "gf_expiration_date",
+                "gf_fclty_trc_finpro_class_desc",
+                "gf_customer_id",
+                "g_borwr_country_id",
+                "gf_entity_id",
+                "gf_branch_id",
+                "gf_trade_reference_code_desc",
+                "gf_page_id",
+                "gf_project_id",
+                "gf_syndicated_fctrc_type_name",
+                "gf_fclty_trc_tran_purp_desc",
+                "gf_fclty_trc_proj_sector_desc",
             )
             .join(
                 deals_bal,
                 on=[
-                    "delta_file_id",
-                    "delta_file_band_id",
-                    "entity_id",
-                    "branch_id",
-                    "currency_id",
+                    "gf_facility_id",
+                    "gf_fclty_trc_id",
+                    "gf_entity_id",
+                    "gf_branch_id",
+                    "g_currency_id",
                 ],
                 how="left",
             )
             .join(
-                branches_df.select("branch_id", "entity_product"),
-                on=["branch_id"],
+                branches_df.withColumnRenamed("branch_id", "gf_branch_id").select("gf_branch_id", "entity_product"),
+                on=["gf_branch_id"],
                 how="inner",
-            )
-            .join(
-                deals_cust,
-                on=["delta_file_id", "delta_file_band_id", "entity_id", "branch_id"],
-                how="left",
             )
         )
 
         # Cómputo de plazo_medio
-
         saldos_cruce = saldos_oficina.select(
-            "delta_file_id",
-            "delta_file_band_id",
-            "entity_id",
-            "branch_id",
-            # "file_tranche_status_type",
-            "deal_signing_date",
-            "expiration_date",
+            "gf_facility_id",
+            "gf_fclty_trc_id",
+            "gf_entity_id",
+            "gf_branch_id",
+            "gf_deal_signing_date",
+            "gf_expiration_date"
         )
 
-        items = operations.getOperationsProperties("items").getItems_total()
+        movements = Movements(dataproc=self.dataproc)
+        items = movements.get_movements_total(date_clan_formatted, saldos_cruce)
         items_balance = ItemsBalance(self.logger, self.dataproc)
         items = items_balance.cruce(items, saldos_cruce)
 
@@ -327,9 +299,13 @@ class SecuritizationProcess:  # pragma: no cover
 
         _, runoff2 = items_balance.runoff(evol_saldos, fecha_valor, col_year, list_year)
 
-        contract_relations = operations.get_deals_global_contract_relations(
-            saldos_oficina
+        clan = self.dataproc.read().parquet(self.sandbox_path + "auxiliar/auxiliar_clan_mrr")
+        contract_relations = facilities.get_facilities_global_contract_relations(
+            branches_df=branches_df,
+            facilities=clan,
+            data_date=date_clan_formatted
         )
+
         self.dslb_writer.write_df_to_sb(
             contract_relations,
             f"{self.sandbox_path}auxiliar",
@@ -367,11 +343,11 @@ class SecuritizationProcess:  # pragma: no cover
         provisiones_df = ifrs9_obj.build_ifrs9()
         unified_risk_df = econ_capital_df.join(
             regl_capital_df,
-            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
             how="left",
         ).join(
             provisiones_df,
-            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
             how="left",
         )
 
@@ -381,7 +357,7 @@ class SecuritizationProcess:  # pragma: no cover
             saldos_oficina.filter(F.col("bbva_commitment_amount") > 0)
             .join(
                 unified_risk_df,
-                on=["delta_file_id", "delta_file_band_id", "branch_id"],
+                on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
                 how="left",
             )
             .fillna(
@@ -398,9 +374,9 @@ class SecuritizationProcess:  # pragma: no cover
         ops_clan = (
             ops_clan.join(
                 runoff2.select(
-                    ["delta_file_id", "delta_file_band_id", "branch_id", "vto_medio"]
+                    ["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id", "vto_medio"]
                 ),
-                on=["delta_file_id", "delta_file_band_id", "branch_id"],
+                on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
                 how="left",
             )
             .fillna(0)
@@ -439,28 +415,30 @@ class SecuritizationProcess:  # pragma: no cover
         ).fillna({"watch_list_clasification_type": 0})
 
         # tomamos los valores de insured type a nivel expediente y lo aplicamos a todos los tramos de cada operación
-        insured_type = operations.getOperationsProperties("deals")
+        insured_type_deals = facilities.get_facilities(origin_apps=["CLAN"], from_date=date_clan_formatted,
+                                                       to_date=date_clan_formatted, products_area="IBF")
+
         insured_type = (
-            insured_type.where(F.col("financial_product_desc") == "Multitranche")
-            .select("delta_file_id", "insured_type")
+            insured_type_deals.where(F.col("gf_financial_product_desc") == "Multitranche")
+            .select("gf_facility_id", "gf_insured_contract_type_name")
             .drop_duplicates()
-            .withColumnRenamed("insured_type", "insured_type_cabecera")
+            .withColumnRenamed("gf_insured_contract_type_name", "insured_type_cabecera")
         )
         insured_type_tramo_cero = (
-            operations.getOperationsProperties("deals")
-            .where(F.col("delta_file_band_id") == "0")
-            .select("delta_file_id", "insured_type")
+            insured_type_deals
+            .where(F.col("gf_fclty_trc_id") == "0")
+            .select("gf_facility_id", "gf_insured_contract_type_name")
             .drop_duplicates()
-            .withColumnRenamed("insured_type", "insured_type_tramo_cero")
+            .withColumnRenamed("gf_insured_contract_type_name", "insured_type_tramo_cero")
         )
 
         ops_clan = (
-            ops_clan.join(insured_type, on=["delta_file_id"], how="left")
-            .join(insured_type_tramo_cero, on=["delta_file_id"], how="left")
+            ops_clan.join(insured_type, on=["gf_facility_id"], how="left")
+            .join(insured_type_tramo_cero, on=["gf_facility_id"], how="left")
             .withColumn(
-                "insured_type",
+                "gf_insured_contract_type_name",
                 F.coalesce(
-                    "insured_type", "insured_type_cabecera", "insured_type_tramo_cero"
+                    "gf_insured_contract_type_name", "insured_type_cabecera", "insured_type_tramo_cero"
                 ),
             )
             .drop("insured_type_cabecera", "insured_type_tramo_cero")
@@ -613,9 +591,9 @@ class SecuritizationProcess:  # pragma: no cover
             )
             .join(
                 countries_df.withColumnRenamed(
-                    "country_id", "project_country_id"
+                    "country_id", "g_country_id"
                 ).withColumnRenamed("country_desc", "project_country_desc"),
-                on=["project_country_id"],
+                on=["g_country_id"],
                 how="left",
             )
         )
@@ -724,7 +702,7 @@ class SecuritizationProcess:  # pragma: no cover
 
         # Payment condition STS: At Least 1 Payment Made
         mvts = (
-            Movements("/data", self.dataproc)
+            movements
             .get_movements(origin_apps=["CLAN"], from_date=None, to_date=None)
             .filter(
                 (
@@ -739,16 +717,16 @@ class SecuritizationProcess:  # pragma: no cover
                 )
             )
             .select(
-                F.col("gf_facility_id").alias("delta_file_id"),
-                F.col("gf_fclty_trc_id").alias("delta_file_band_id"),
-                F.col("gf_branch_id").alias("branch_id"),
+                F.col("gf_facility_id").alias("gf_facility_id"),
+                F.col("gf_fclty_trc_id").alias("gf_fclty_trc_id"),
+                F.col("gf_branch_id").alias("gf_branch_id"),
                 F.lit(True).alias("sts_payment_condition"),
             )
             .distinct()
         )
 
         ops_clan = ops_clan.join(
-            mvts, on=["delta_file_id", "delta_file_band_id", "branch_id"], how="left"
+            mvts, on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"], how="left"
         ).fillna({"sts_payment_condition": False})
 
         # Match Clan-Titularizaciones
@@ -756,7 +734,7 @@ class SecuritizationProcess:  # pragma: no cover
         securitizations = Securitizations(self.logger, self.spark, self.dataproc)
         ops_clan = ops_clan.join(
             securitizations.securitization(),
-            on=["delta_file_band_id", "delta_file_id", "branch_id"],
+            on=["gf_fclty_trc_id", "gf_facility_id", "gf_branch_id"],
             how="left",
         ).fillna({"gf_securitization_id": "N"})
         ops_clan = ops_clan.withColumn(
@@ -780,7 +758,7 @@ class SecuritizationProcess:  # pragma: no cover
         ).build_guaranteed_amounts()
         ops_clan = ops_clan.join(
             guaranteed_amounts,
-            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
             how="left",
         )
 
@@ -793,7 +771,7 @@ class SecuritizationProcess:  # pragma: no cover
         ).build_esg_linked_flag()
         ops_clan = ops_clan.join(
             esg_linked,
-            on=["delta_file_id", "delta_file_band_id", "branch_id"],
+            on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
             how="left",
         )
 
@@ -807,7 +785,7 @@ class SecuritizationProcess:  # pragma: no cover
             EntityCatalogue(self.logger, self.dataproc)
             .get_entities_catalog()
             .selectExpr(
-                "g_holding_entity_id AS entity_id",
+                "g_holding_entity_id AS gf_entity_id",
                 "gf_entity_desc AS banking_entity_desc",
             )
         )
@@ -818,30 +796,30 @@ class SecuritizationProcess:  # pragma: no cover
         )
         cubo_aud = (
             ops_clan.select(
-                "delta_file_id",
-                "delta_file_band_id",
-                "branch_id",
-                "project_id",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "gf_branch_id",
+                "gf_project_id",
                 "project_country_desc",
-                "financial_product_desc",
-                "project_sector_desc",
-                "deal_purpose_type",
-                "seniority_name",
-                "insured_type",
-                "currency_id",
-                "expiration_date",
-                F.substring("deal_signing_date", 1, 10).alias("deal_signing_date"),
-                "syndicated_type",
+                "gf_financial_product_desc",
+                "gf_fclty_trc_proj_sector_desc",
+                "gf_fclty_trc_tran_purp_desc",
+                "gf_fclty_trc_srty_type_name",
+                "gf_insured_contract_type_name",
+                "g_currency_id",
+                "gf_expiration_date",
+                F.substring("gf_deal_signing_date", 1, 10).alias("gf_deal_signing_date"),
+                "gf_syndicated_fctrc_type_name",
                 "sts_payment_condition",
                 "gf_rw_sm_per",
                 "sts_sm_rw_condition",
-                "financial_product_class_desc",
-                "customer_id",
+                "gf_fclty_trc_finpro_class_desc",
+                "gf_customer_id",
                 "g_customer_id",
                 "customer_country",
                 "g_holding_group_id",
                 "group_country_desc",
-                F.col("entity_id").alias("banking_entity_id"),
+                F.col("gf_entity_id").alias("banking_entity_id"),
                 F.col("banking_entity_desc"),
                 F.col("lmscl_econ_internal_ratg_type").alias(
                     "m5_expanded_master_scale_id"
@@ -860,13 +838,13 @@ class SecuritizationProcess:  # pragma: no cover
                 "g_asset_allocation_sector_desc",
                 "g_asset_allocation_subsec_desc",
                 "final_stage_type",
-                F.col("file_product_desc").alias("com_product"),
-                "bbva_drawn_amount",
-                "bbva_available_amount",
-                "bbva_drawn_eur_amount",
-                "bbva_available_eur_amount",
-                "total_nominal_amount",
-                "total_nominal_eur_amount",
+                F.col("gf_fclty_product_desc").alias("com_product"),
+                "gf_bbva_funded_amount",
+                "gf_bbva_avail_amount",
+                "gf_bbva_funded_eur_amount",
+                "gf_bbva_avail_eur_amount",
+                "gf_total_nominal_amount",
+                "gf_total_nominal_eur_amount",
                 F.col("g_sp_lt_rating_fc_type").alias("group_rating_sp"),
                 "watch_list_clasification_type",
                 F.col("gf_ek_adj_mit_dvrsfn_amount").alias(
@@ -899,15 +877,15 @@ class SecuritizationProcess:  # pragma: no cover
             )
             .withColumn(
                 "exchange_rate",
-                F.col("total_nominal_amount") / F.col("total_nominal_eur_amount"),
+                F.col("gf_total_nominal_amount") / F.col("gf_total_nominal_eur_amount"),
             )
             .withColumn(
                 "Total_Amount_CCY",
-                F.col("bbva_drawn_amount") + F.col("bbva_available_amount"),
+                F.col("gf_bbva_funded_amount") + F.col("gf_bbva_avail_amount"),
             )
             .withColumn(
                 "Total_Amount_EUR",
-                F.col("bbva_drawn_eur_amount") + F.col("bbva_available_eur_amount"),
+                F.col("gf_bbva_funded_eur_amount") + F.col("gf_bbva_avail_eur_amount"),
             )
             .withColumn(
                 "EC_per",
@@ -934,8 +912,8 @@ class SecuritizationProcess:  # pragma: no cover
             .withColumn("basemoto_date", F.lit(date_reg_econ_capital))
             .withColumn("ifrs9_date", F.lit(date_ifrs9))
             .drop(
-                "total_nominal_amount",
-                "total_nominal_eur_amount",
+                "gf_total_nominal_amount",
+                "gf_total_nominal_eur_amount",
                 "gf_m5_mitigation_rc_amount",
                 "gf_ma_mitigation_rc_amount",
                 "gf_m5_total_el_amount",

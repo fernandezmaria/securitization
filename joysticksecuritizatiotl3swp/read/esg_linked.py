@@ -41,7 +41,7 @@ class ESGLinkedBuilder:
             )
             .join(sust, on="g_contract_id", how="left")
             .fillna(0, subset=["esg_linked"])
-            .groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            .groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(F.max("esg_linked").alias("esg_linked"))
         )
         return sust_operations

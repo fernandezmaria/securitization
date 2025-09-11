@@ -36,14 +36,14 @@ class Securitizations:
         securitization_df = (
             sc.get_securization()
             .selectExpr(
-                "gf_fclty_trc_id AS delta_file_band_id",
-                "gf_facility_id AS delta_file_id",
-                "g_branch_id AS branch_id",
+                "gf_fclty_trc_id AS gf_fclty_trc_id",
+                "gf_facility_id AS gf_facility_id",
+                "g_branch_id AS g_branch_id",
                 "gf_facility_securitization_per",
                 "gf_securitization_id",
                 "gf_odate_date_id",
             )
-            .groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            .groupBy("gf_facility_id", "gf_fclty_trc_id", "g_branch_id")
             .agg(
                 F.sum("gf_facility_securitization_per").alias(
                     "gf_facility_securitization_per"

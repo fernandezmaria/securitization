@@ -137,7 +137,7 @@ class GuaranteesAndGuarantorsBuilder:
         # Join with contract_relations to get the local identifiers
         guar_amounts = (
             guar_amounts.join(self.contract_relations, on="g_contract_id", how="right")
-            .groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            .groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(
                 F.sum("bei_guaranteed_amount").alias("bei_guaranteed_amount"),
                 F.sum("non_bei_guaranteed_amount").alias("non_bei_guaranteed_amount"),

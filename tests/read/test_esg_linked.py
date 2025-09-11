@@ -9,7 +9,7 @@ class TestESGLinkedBuilder(unittest.TestCase):
         self.logger = MagicMock()
         self.dataproc = MagicMock()
         self.spark = SparkSession.builder.master("local").appName("test").getOrCreate()
-        self.contract_relations = self.spark.createDataFrame([], schema="g_contract_id STRING, delta_file_id STRING, delta_file_band_id STRING, branch_id STRING, g_glob_contract_hier_lvl_type STRING")
+        self.contract_relations = self.spark.createDataFrame([], schema="g_contract_id STRING, gf_facility_id STRING, gf_fclty_trc_id STRING, gf_branch_id STRING, g_glob_contract_hier_lvl_type STRING")
         self.esg_linked_builder = ESGLinkedBuilder(self.logger, self.dataproc, "2023-01-01", self.contract_relations)
 
     @patch('joysticksecuritizatiotl3swp.read.esg_linked.ContractSustLinked.get_contract_sust_linked')

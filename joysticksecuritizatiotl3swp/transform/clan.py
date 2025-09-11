@@ -44,7 +44,7 @@ class ItemsBalance:
 
         return items.join(
             balance,
-            on=["delta_file_id", "delta_file_band_id", "entity_id", "branch_id"],
+            on=["gf_facility_id", "gf_fclty_trc_id", "gf_entity_id", "gf_branch_id"],
             how="inner",
         )
 
@@ -66,27 +66,27 @@ class ItemsBalance:
         self.logger.info("data.balance_evolution")
 
         # FILTRO PARA EVOLUCION DE SALDOS
-        evol_saldos = items.where(F.col("movement_class_name").isin(mov_evol_saldos))
+        evol_saldos = items.where(F.col("gf_movement_class_desc").isin(mov_evol_saldos))
 
         return evol_saldos.select(
-            "delta_file_id",
-            "delta_file_band_id",
-            "delta_file_band_desc",
-            "branch_id",
-            "entity_id",
-            "currency_id",
-            "deal_signing_date",
-            "expiration_date",
-            "movement_class_name",
-            "item_schedule_desc",
-            "item_start_date",
-            "item_end_date",
-            "settlement_date",
-            "movement_id",
-            "base_item_id",
-            "item_accounting_currency_amount",
-            "item_base_currency_amount",
-            "item_amount",
+            "gf_facility_id",
+            "gf_fclty_trc_id",
+            "gf_fclty_trc_desc",
+            "gf_branch_id",
+            "gf_entity_id",
+            "g_currency_id",
+            "gf_deal_signing_date",
+            "gf_expiration_date",
+            "gf_movement_class_desc",
+            "gf_movement_type_desc",
+            "gf_mov_start_date",
+            "gf_mov_end_date",
+            "gf_settlement_date",
+            "gf_movement_sequential_id",
+            "gf_drwdn_id",
+            "gf_ac_movement_amount",
+            "gf_mov_settl_br_bc_amount",
+            "gf_movement_amount",
         )
 
     def balance_evolution(self, evol_saldos, fecha_valor):
@@ -112,24 +112,24 @@ class ItemsBalance:
         # Calcular el importe del movimiento en € que no tenemos disponible en Clan
         evol_saldos = (
             evol_saldos.join(
-                fx.withColumnRenamed("currency", "currency_id"),
-                on="currency_id",
+                fx.withColumnRenamed("currency", "g_currency_id"),
+                on="g_currency_id",
                 how="left",
             )
             .fillna(1, subset=["fx"])
-            .withColumn("item_amount_eur", F.col("item_amount") * F.col("fx"))
+            .withColumn("item_amount_eur", F.col("gf_movement_amount") * F.col("fx"))
             .withColumn(
-                "item_base_amount_eur", F.col("item_base_currency_amount") * F.col("fx")
+                "item_base_amount_eur", F.col("gf_mov_settl_br_bc_amount") * F.col("fx")
             )
         )
 
         evolucion_saldos_aux = (
             evol_saldos.select(
-                "delta_file_id",
-                "delta_file_band_id",
-                "branch_id",
-                "deal_signing_date",
-                "expiration_date",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "gf_branch_id",
+                "gf_deal_signing_date",
+                "gf_expiration_date",
             )
             .drop_duplicates()
             .withColumn("var_total", F.lit(0))
@@ -138,8 +138,8 @@ class ItemsBalance:
             .withColumn("var_total_acum", F.lit(0))
             .withColumn("var_dispuesto_acum", F.lit(0))
             .withColumn("runoff_acum", F.lit(0))
-            .withColumn("item_end_date", F.lit(fecha_valor))
-            .withColumn("item_start_date", F.lit(fecha_valor))
+            .withColumn("gf_mov_end_date", F.lit(fecha_valor))
+            .withColumn("gf_mov_start_date", F.lit(fecha_valor))
         )
 
         # Columnas en funcion del tipo de movimiento
@@ -147,11 +147,11 @@ class ItemsBalance:
             evol_saldos.withColumn(
                 "var_total",
                 F.when(
-                    F.col("item_schedule_desc").isin(listaMov),
+                    F.col("gf_movement_type_desc").isin(listaMov),
                     -F.col("item_base_amount_eur"),
                 ).otherwise(
                     F.when(
-                        F.col("item_schedule_desc") == "Authorized Amount Increase",
+                        F.col("gf_movement_type_desc") == "Authorized Amount Increase",
                         F.col("item_base_amount_eur"),
                     ).otherwise(0)
                 ),
@@ -159,11 +159,11 @@ class ItemsBalance:
             .withColumn(
                 "var_dispuesto",
                 F.when(
-                    F.col("item_schedule_desc").isin(listaMov1),
+                    F.col("gf_movement_type_desc").isin(listaMov1),
                     F.col("item_base_amount_eur"),
                 ).otherwise(
                     F.when(
-                        F.col("item_schedule_desc").isin(listaMov2),
+                        F.col("gf_movement_type_desc").isin(listaMov2),
                         -F.col("item_base_amount_eur"),
                     ).otherwise(0)
                 ),
@@ -171,47 +171,47 @@ class ItemsBalance:
             .withColumn(
                 "runoff",
                 F.when(
-                    F.col("item_schedule_desc").isin(listaMov),
+                    F.col("gf_movement_type_desc").isin(listaMov),
                     F.col("item_amount_eur"),
                 ).otherwise(0),
             )
             .withColumn(
-                "item_start_date",
+                "gf_mov_start_date",
                 F.when(
-                    F.col("item_schedule_desc").isin(listaMov4),
-                    F.col("item_end_date"),
-                ).otherwise(F.col("item_start_date")),
+                    F.col("gf_movement_type_desc").isin(listaMov4),
+                    F.col("gf_mov_end_date"),
+                ).otherwise(F.col("gf_mov_start_date")),
             )
             .withColumn("var_dispuesto_euros", F.lit(0))
         )
 
         # movimientos anteriores a la fecha valor
         w_cumsum = (
-            W.partitionBy("delta_file_id", "delta_file_band_id", "branch_id")
+            W.partitionBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .orderBy(
-                F.col("delta_file_id").asc(),
-                F.col("delta_file_band_id").asc(),
-                F.col("branch_id").asc(),
-                F.col("item_start_date").desc(),
+                F.col("gf_facility_id").asc(),
+                F.col("gf_fclty_trc_id").asc(),
+                F.col("gf_branch_id").asc(),
+                F.col("gf_mov_start_date").desc(),
             )
             .rangeBetween(W.unboundedPreceding, 0)
         )
         w_lag = W.partitionBy(
-            "delta_file_id", "delta_file_band_id", "branch_id"
-        ).orderBy("delta_file_id", "delta_file_band_id", "branch_id", "item_end_date")
+            "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"
+        ).orderBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id", "gf_mov_end_date")
 
         evolucion_saldos_hasta = (
-            evol_saldos1.filter(F.col("item_start_date") <= fecha_valor)
+            evol_saldos1.filter(F.col("gf_mov_start_date") <= fecha_valor)
             .withColumn("var_total", -F.col("var_total"))
             .withColumn("var_dispuesto", -F.col("var_dispuesto"))
             .withColumn("var_dispuesto_euros", -F.col("var_dispuesto_euros"))
             .groupby(
-                "delta_file_id",
-                "delta_file_band_id",
-                "branch_id",
-                "deal_signing_date",
-                "expiration_date",
-                "item_start_date",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "gf_branch_id",
+                "gf_deal_signing_date",
+                "gf_expiration_date",
+                "gf_mov_start_date",
             )
             .agg(
                 F.sum("var_total").alias("var_total"),
@@ -220,53 +220,53 @@ class ItemsBalance:
             )
             .withColumn("var_total_acum", F.sum("var_total").over(w_cumsum))
             .withColumn("var_dispuesto_acum", F.sum("var_dispuesto").over(w_cumsum))
-            .withColumn("item_end_date", F.col("item_start_date"))
-            .withColumn("item_start_date", F.lag("item_end_date").over(w_lag))
+            .withColumn("gf_mov_end_date", F.col("gf_mov_start_date"))
+            .withColumn("gf_mov_start_date", F.lag("gf_mov_end_date").over(w_lag))
             .withColumn(
-                "item_start_date",
+                "gf_mov_start_date",
                 F.when(
-                    F.col("item_start_date").isNull(), F.col("deal_signing_date")
-                ).otherwise(F.col("item_start_date")),
+                    F.col("gf_mov_start_date").isNull(), F.col("gf_deal_signing_date")
+                ).otherwise(F.col("gf_mov_start_date")),
             )
         )
 
         evolucion_saldos_hasta_aux = evolucion_saldos_hasta.groupBy(
-            "delta_file_id", "delta_file_band_id", "branch_id"
-        ).agg(F.max("item_end_date").alias("desde"))
+            "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"
+        ).agg(F.max("gf_mov_end_date").alias("desde"))
 
         # movimientos posteriores a la fecha valor
         w_lag2 = W.partitionBy(
-            "delta_file_id", "delta_file_band_id", "branch_id"
-        ).orderBy("delta_file_id", "delta_file_band_id", "branch_id", "item_start_date")
+            "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"
+        ).orderBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id", "gf_mov_start_date")
         w_cumsum2 = (
-            W.partitionBy("delta_file_id", "delta_file_band_id", "branch_id")
+            W.partitionBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .orderBy(
-                "delta_file_id", "delta_file_band_id", "branch_id", "item_start_date"
+                "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id", "gf_mov_start_date"
             )
             .rangeBetween(W.unboundedPreceding, 0)
         )
 
         evol_saldos1 = (
-            evol_saldos1.filter(F.col("item_start_date") > fecha_valor)
+            evol_saldos1.filter(F.col("gf_mov_start_date") > fecha_valor)
             .groupby(
-                "delta_file_id",
-                "delta_file_band_id",
-                "branch_id",
-                "deal_signing_date",
-                "expiration_date",
-                "item_start_date",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "gf_branch_id",
+                "gf_deal_signing_date",
+                "gf_expiration_date",
+                "gf_mov_start_date",
             )
             .agg(
                 F.sum("var_total").alias("var_total"),
                 F.sum("var_dispuesto").alias("var_dispuesto"),
                 F.sum("runoff").alias("runoff"),
             )
-            .withColumn("item_end_date", F.lead("item_start_date").over(w_lag2))
+            .withColumn("gf_mov_end_date", F.lead("gf_mov_start_date").over(w_lag2))
             .withColumn(
-                "item_end_date",
+                "gf_mov_end_date",
                 F.when(
-                    F.col("item_end_date").isNull(), F.col("expiration_date")
-                ).otherwise(F.col("item_end_date")),
+                    F.col("gf_mov_end_date").isNull(), F.col("gf_expiration_date")
+                ).otherwise(F.col("gf_mov_end_date")),
             )
             .withColumn("var_total_acum", F.sum("var_total").over(w_cumsum2))
             .withColumn("var_dispuesto_acum", F.sum("var_dispuesto").over(w_cumsum2))
@@ -274,46 +274,46 @@ class ItemsBalance:
         )
 
         evolucion_saldos1_aux = evol_saldos1.groupBy(
-            "delta_file_id", "delta_file_band_id", "branch_id"
-        ).agg(F.min("item_start_date").alias("hasta"))
+            "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"
+        ).agg(F.min("gf_mov_start_date").alias("hasta"))
 
         # Unir tablas "aux"
         evolucion_saldos_aux = (
             evolucion_saldos_aux.join(
                 evolucion_saldos_hasta_aux,
-                on=["delta_file_id", "delta_file_band_id", "branch_id"],
+                on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
                 how="left",
             )
             .join(
                 evolucion_saldos1_aux,
-                on=["delta_file_id", "delta_file_band_id", "branch_id"],
+                on=["gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"],
                 how="left",
             )
             .withColumn(
-                "item_start_date",
+                "gf_mov_start_date",
                 F.when(F.col("desde").isNotNull(), F.col("desde")).otherwise(
-                    F.col("deal_signing_date")
+                    F.col("gf_deal_signing_date")
                 ),
             )
             .withColumn(
-                "item_end_date",
+                "gf_mov_end_date",
                 F.when(F.col("hasta").isNotNull(), F.col("hasta")).otherwise(
-                    F.col("expiration_date")
+                    F.col("gf_expiration_date")
                 ),
             )
             .select(
-                "delta_file_id",
-                "delta_file_band_id",
-                "branch_id",
-                "deal_signing_date",
-                "expiration_date",
+                "gf_facility_id",
+                "gf_fclty_trc_id",
+                "gf_branch_id",
+                "gf_deal_signing_date",
+                "gf_expiration_date",
                 "var_total",
                 "var_dispuesto",
                 "runoff",
                 "var_total_acum",
                 "var_dispuesto_acum",
-                "item_end_date",
-                "item_start_date",
+                "gf_mov_end_date",
+                "gf_mov_start_date",
                 "runoff_acum",
             )
         )
@@ -360,21 +360,21 @@ class ItemsBalance:
             return str(datetime.date.fromordinal(int(num)))
 
         runoff1 = evolucion_saldos1.filter(
-            F.col("item_start_date") > fecha_valor
+            F.col("gf_mov_start_date") > fecha_valor
         ).withColumn(
-            "sumproduct", F.col("runoff") * date_to_num(F.col("item_start_date"))
+            "sumproduct", F.col("runoff") * date_to_num(F.col("gf_mov_start_date"))
         )
 
         for i in range(0, 11):
             runoff1 = runoff1.withColumn(
                 col_year[i],
                 F.when(
-                    F.year(F.col("item_start_date")) == list_year[i], F.col("runoff")
+                    F.year(F.col("gf_mov_start_date")) == list_year[i], F.col("runoff")
                 ).otherwise(0),
             )
 
         runoff1 = runoff1.groupBy(
-            "delta_file_id", "delta_file_band_id", "branch_id"
+            "gf_facility_id", "gf_fclty_trc_id", "gf_branch_id"
         ).agg(
             F.sum("runoff").alias("importe_amortizado"),
             F.sum("sumproduct").alias("sumproduct"),

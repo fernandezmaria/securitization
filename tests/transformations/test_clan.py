@@ -11,7 +11,7 @@ from pyspark.sql.types import StructType, StructField, IntegerType, StringType, 
     DoubleType
 from rubik.load.markets import Markets
 
-from joysticksecuritizatiotl3swp.transform.clan import ItemsBalance  # Replace with actual module name
+from joysticksecuritizatiotl3swp.transform.clan import ItemsBalance
 
 
 class TestItemsBalance(unittest.TestCase):
@@ -32,18 +32,18 @@ class TestItemsBalance(unittest.TestCase):
         balance_data = [(1, 2, "A", "B", 100), (2, 3, "C", "D", 200)]
 
         items = self.spark.createDataFrame(items_data,
-                                           ["delta_file_id", "delta_file_band_id", "entity_id", "branch_id"])
+                                           ["gf_facility_id", "gf_fclty_trc_id", "gf_entity_id", "gf_branch_id"])
         balance = self.spark.createDataFrame(balance_data,
-                                             ["delta_file_id", "delta_file_band_id", "entity_id", "branch_id",
+                                             ["gf_facility_id", "gf_fclty_trc_id", "gf_entity_id", "gf_branch_id",
                                               "amount"])
 
         result = self.items_balance.cruce(items, balance)
 
         expected_schema = StructType([
-            StructField("delta_file_id", IntegerType(), True),
-            StructField("delta_file_band_id", IntegerType(), True),
-            StructField("entity_id", StringType(), True),
-            StructField("branch_id", StringType(), True),
+            StructField("gf_facility_id", IntegerType(), True),
+            StructField("gf_fclty_trc_id", IntegerType(), True),
+            StructField("gf_entity_id", StringType(), True),
+            StructField("gf_branch_id", StringType(), True),
             StructField("amount", IntegerType(), True)
         ])
 
@@ -61,24 +61,24 @@ class TestItemsBalance(unittest.TestCase):
 
     def test_narrow_down_movs(self):
         schema = StructType([
-            StructField("delta_file_id", IntegerType(), True),
-            StructField("delta_file_band_id", IntegerType(), True),
-            StructField("delta_file_band_desc", StringType(), True),
-            StructField("branch_id", StringType(), True),
-            StructField("entity_id", StringType(), True),
-            StructField("currency_id", StringType(), True),
-            StructField("deal_signing_date", StringType(), True),
-            StructField("expiration_date", StringType(), True),
-            StructField("movement_class_name", StringType(), True),
-            StructField("item_schedule_desc", StringType(), True),
-            StructField("item_start_date", StringType(), True),
-            StructField("item_end_date", StringType(), True),
-            StructField("settlement_date", StringType(), True),
-            StructField("movement_id", IntegerType(), True),
-            StructField("base_item_id", IntegerType(), True),
-            StructField("item_accounting_currency_amount", FloatType(), True),  # Example Decimal Type
-            StructField("item_base_currency_amount", FloatType(), True),  # Example Decimal Type
-            StructField("item_amount", FloatType(), True),  # Example Decimal Type
+            StructField("gf_facility_id", IntegerType(), True),
+            StructField("gf_fclty_trc_id", IntegerType(), True),
+            StructField("gf_fclty_trc_desc", StringType(), True),
+            StructField("gf_branch_id", StringType(), True),
+            StructField("gf_entity_id", StringType(), True),
+            StructField("g_currency_id", StringType(), True),
+            StructField("gf_deal_signing_date", StringType(), True),
+            StructField("gf_expiration_date", StringType(), True),
+            StructField("gf_movement_class_desc", StringType(), True),
+            StructField("gf_movement_type_desc", StringType(), True),
+            StructField("gf_mov_start_date", StringType(), True),
+            StructField("gf_mov_end_date", StringType(), True),
+            StructField("gf_settlement_date", StringType(), True),
+            StructField("gf_movement_sequential_id", IntegerType(), True),
+            StructField("gf_drwdn_id", IntegerType(), True),
+            StructField("gf_ac_movement_amount", FloatType(), True),
+            StructField("gf_mov_settl_br_bc_amount", FloatType(), True),
+            StructField("gf_movement_amount", FloatType(), True),
         ])
 
         # Create dummy data (list of tuples) - Adjust data types and values as needed
@@ -123,24 +123,24 @@ class TestItemsBalance(unittest.TestCase):
             (1, 2, "Band 1", "Branch A", "Entity X", "USD", "2024-01-15", "2025-01-15", "Drawdown", "Schedule 1",
              "2024-02-01", "2024-02-15", "2024-02-20", 101, 201, 100.50, 110.25, 120.00)]
         evol_saldos_schema = StructType([
-            StructField("delta_file_id", IntegerType(), True),
-            StructField("delta_file_band_id", IntegerType(), True),
-            StructField("delta_file_band_desc", StringType(), True),
-            StructField("branch_id", StringType(), True),
-            StructField("entity_id", StringType(), True),
-            StructField("currency_id", StringType(), True),
-            StructField("deal_signing_date", StringType(), True),
-            StructField("expiration_date", StringType(), True),
-            StructField("movement_class_name", StringType(), True),
-            StructField("item_schedule_desc", StringType(), True),
-            StructField("item_start_date", StringType(), True),
-            StructField("item_end_date", StringType(), True),
-            StructField("settlement_date", StringType(), True),
-            StructField("movement_id", IntegerType(), True),
-            StructField("base_item_id", IntegerType(), True),
-            StructField("item_accounting_currency_amount", FloatType(), True),  # Example Decimal Type
-            StructField("item_base_currency_amount", FloatType(), True),  # Example Decimal Type
-            StructField("item_amount", FloatType(), True),  # Example Decimal Type
+            StructField("gf_facility_id", IntegerType(), True),
+            StructField("gf_fclty_trc_id", IntegerType(), True),
+            StructField("gf_fclty_trc_desc", StringType(), True),
+            StructField("gf_branch_id", StringType(), True),
+            StructField("gf_entity_id", StringType(), True),
+            StructField("g_currency_id", StringType(), True),
+            StructField("gf_deal_signing_date", StringType(), True),
+            StructField("gf_expiration_date", StringType(), True),
+            StructField("gf_movement_class_desc", StringType(), True),
+            StructField("gf_movement_type_desc", StringType(), True),
+            StructField("gf_mov_start_date", StringType(), True),
+            StructField("gf_mov_end_date", StringType(), True),
+            StructField("gf_settlement_date", StringType(), True),
+            StructField("gf_movement_sequential_id", IntegerType(), True),
+            StructField("gf_drwdn_id", IntegerType(), True),
+            StructField("gf_ac_movement_amount", FloatType(), True),
+            StructField("gf_mov_settl_br_bc_amount", FloatType(), True),
+            StructField("gf_movement_amount", FloatType(), True),
         ])
 
         evol_saldos_df = self.spark.createDataFrame(evol_saldos_data, schema=evol_saldos_schema)
@@ -183,12 +183,12 @@ class TestItemsBalance(unittest.TestCase):
             (1, 3, "Branch B", date(2024, 1, 15), date(2025, 1, 15), date(2024, 4, 1), 300.0, 150.0, 40.0)
         ]
         schema = StructType([
-            StructField("delta_file_id", IntegerType(), True),
-            StructField("delta_file_band_id", IntegerType(), True),
-            StructField("branch_id", StringType(), True),
-            StructField("deal_signing_date", DateType(), True),
-            StructField("expiration_date", DateType(), True),
-            StructField("item_start_date", DateType(), True),
+            StructField("gf_facility_id", IntegerType(), True),
+            StructField("gf_fclty_trc_id", IntegerType(), True),
+            StructField("gf_branch_id", StringType(), True),
+            StructField("gf_deal_signing_date", DateType(), True),
+            StructField("gf_expiration_date", DateType(), True),
+            StructField("gf_mov_start_date", DateType(), True),
             StructField("var_total", DoubleType(), True),
             StructField("var_dispuesto", DoubleType(), True),
             StructField("runoff", DoubleType(), True),
@@ -203,9 +203,9 @@ class TestItemsBalance(unittest.TestCase):
 
         # Define the common schema
         expected_schema = StructType([
-            StructField("delta_file_id", IntegerType(), True),
-            StructField("delta_file_band_id", IntegerType(), True),
-            StructField("branch_id", StringType(), True),
+            StructField("gf_facility_id", IntegerType(), True),
+            StructField("gf_fclty_trc_id", IntegerType(), True),
+            StructField("gf_branch_id", StringType(), True),
             StructField("importe_amortizado", DoubleType(), True),
             StructField("sumproduct", DoubleType(), True),
             StructField("imp_amortizado_y0", DoubleType(), True),

@@ -89,7 +89,7 @@ class EconRegltyCapital:
     def build_econ_reglty_capital(self):
         """
         This method builds the economic and regulatory capital information and adds the local identifiers
-        (delta_file_id, delta_file_band_id, branch_id) for later joining with CLAN.
+        (gf_facility_id, gf_fclty_trc_id, gf_branch_id) for later joining with CLAN.
         Parameters:
         ----------
         None
@@ -154,7 +154,7 @@ class EconRegltyCapital:
 
         # Se calculan máximos en lugar de sumas como en el proceso mensual
         econ_capital_df = (
-            econ_capital_df.groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            econ_capital_df.groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(
                 F.max("gf_economic_capital_ead_amount").alias(
                     "gf_economic_capital_ead_amount"
@@ -189,7 +189,7 @@ class EconRegltyCapital:
             .drop("gf_from_prblty_dflt_per", "gf_to_prblty_dflt_per")
         )
         regl_capital_df = (
-            regl_capital_df.groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            regl_capital_df.groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(
                 F.max("gf_rce_amd_exposure_amount").alias("gf_rce_amd_exposure_amount"),
                 F.max("gf_rce_adm_mit_captl_amount").alias(
@@ -269,7 +269,7 @@ class IFRS9:
     def build_ifrs9(self):
         """
         This method builds the IFRS9 information and adds the local identifiers
-        (delta_file_id, delta_file_band_id, branch_id) for later joining with CLAN.
+        (gf_facility_id, gf_fclty_trc_id, gf_branch_id) for later joining with CLAN.
         Parameters:
         ----------
         None
@@ -281,7 +281,7 @@ class IFRS9:
         ifrs9 = self.fx.generic(
             self.ifrs9, {"final_provision_amount": "final_provision_amount"}
         ).select(
-            F.substring("branch_id", 3, 4).alias("branch_id"),
+            F.substring("branch_id", 3, 4).alias("gf_branch_id"),
             "contract_id",
             "entific_id",
             "final_stage_type",
@@ -293,8 +293,8 @@ class IFRS9:
                 "entific_id", F.substring("g_contract_id", 0, 2)
             )
             .withColumn("contract_id", F.substring("g_contract_id", 11, 26))
-            .join(ifrs9, on=["entific_id", "contract_id", "branch_id"], how="inner")
-            .groupBy("delta_file_id", "delta_file_band_id", "branch_id")
+            .join(ifrs9, on=["entific_id", "contract_id", "gf_branch_id"], how="inner")
+            .groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(
                 F.sum("final_provision_amount").alias("final_provision_amount"),
                 F.max("final_stage_type").alias("final_stage_type"),
