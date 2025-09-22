@@ -4,4 +4,4 @@
 Top-level package for joysticksecuritizatiotl3swp.
 """
 
-__version__ = "2.0.11"
+__version__ = "2.0.12"

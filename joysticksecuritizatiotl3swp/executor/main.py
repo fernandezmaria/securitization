@@ -382,7 +382,7 @@ class SecuritizationProcess:  # pragma: no cover
             .fillna(0)
             .withColumn(
                 "plazo_medio",
-                F.datediff(F.to_date(F.col("vto_medio")), F.col("df_deal_signing_date"))
+                F.datediff(F.to_date(F.col("vto_medio")), F.col("gf_deal_signing_date"))
                 / 365,
             )
             .fillna(0, subset=["plazo_medio"])
