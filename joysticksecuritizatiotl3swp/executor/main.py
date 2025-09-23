@@ -230,8 +230,9 @@ class SecuritizationProcess:  # pragma: no cover
         # Datos de Clan a nivel oficina
         facilities = Facilities(self.dataproc)
 
-        deals_op = facilities.deals_operations(level="oficina", status=None)
-        deals_bal = facilities.balance_operations(facilities=deals_op, status=None,
+        facilities_df = facilities.get_facilities(products_area="IBF", from_date=date_clan_formatted, to_date=date_clan_formatted)
+        deals_op = facilities.deals_operations(level="oficina", status=None, facilities=facilities_df, data_date=date_clan_formatted)
+        deals_bal = facilities.balance_operations(facilities=facilities_df, status=None,
                                                   data_date=date_clan_formatted)
 
         saldos_oficina = (
@@ -299,10 +300,9 @@ class SecuritizationProcess:  # pragma: no cover
 
         _, runoff2 = items_balance.runoff(evol_saldos, fecha_valor, col_year, list_year)
 
-        clan = self.dataproc.read().parquet(self.sandbox_path + "auxiliar/auxiliar_clan_mrr")
         contract_relations = facilities.get_facilities_global_contract_relations(
             branches_df=branches_df,
-            facilities=clan,
+            facilities=saldos_oficina.drop('gf_cib_local_contract_id'),
             data_date=date_clan_formatted
         )
 
