@@ -38,12 +38,12 @@ class Securitizations:
             .selectExpr(
                 "gf_fclty_trc_id AS gf_fclty_trc_id",
                 "gf_facility_id AS gf_facility_id",
-                "g_branch_id AS g_branch_id",
+                "g_branch_id AS gf_branch_id",
                 "gf_facility_securitization_per",
                 "gf_securitization_id",
                 "gf_odate_date_id",
             )
-            .groupBy("gf_facility_id", "gf_fclty_trc_id", "g_branch_id")
+            .groupBy("gf_facility_id", "gf_fclty_trc_id", "gf_branch_id")
             .agg(
                 F.sum("gf_facility_securitization_per").alias(
                     "gf_facility_securitization_per"
