@@ -235,30 +235,9 @@ class SecuritizationProcess:  # pragma: no cover
         deals_bal = facilities.balance_operations(facilities=facilities_df, status=None,
                                                   data_date=date_clan_formatted)
 
+        drop_deals = ['gf_cib_local_contract_id', 'gf_trade_reference_code_desc', 'gf_total_nominal_amount', 'gf_total_nominal_eur_amount', 'gf_bbva_fclty_trc_nom_shr_per', 'gf_bbva_user_limit_amount', 'gf_bbva_user_limit_eur_amount', 'gf_facility_trade_subtype_id', 'gf_fclty_trc_finpro_class_desc']
         saldos_oficina = (
-            deals_op.select(
-                "gf_facility_id",
-                "gf_fclty_trc_id",
-                "g_country_id",
-                "gf_fclty_product_desc",
-                "gf_financial_product_desc",
-                "gf_fclty_trc_srty_type_name",
-                "gf_insured_contract_type_name",
-                "g_currency_id",
-                "gf_deal_signing_date",
-                "gf_expiration_date",
-                "gf_fclty_trc_finpro_class_desc",
-                "gf_customer_id",
-                "g_borwr_country_id",
-                "gf_entity_id",
-                "gf_branch_id",
-                "gf_trade_reference_code_desc",
-                "gf_page_id",
-                "gf_project_id",
-                "gf_syndicated_fctrc_type_name",
-                "gf_fclty_trc_tran_purp_desc",
-                "gf_fclty_trc_proj_sector_desc",
-            )
+            deals_op.drop(*drop_deals)
             .join(
                 deals_bal,
                 on=[
