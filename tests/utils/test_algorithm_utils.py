@@ -43,7 +43,7 @@ class TestSecuritizationUtils(TestCase):
 
     def test_get_securization_type(self):
         result = SecuritizationUtils.get_securization_type(self.limits_processed_df)
-        self.assertEqual(result, 'corporate_loan')
+        self.assertEqual(result, 'project_finance')
 
     def test_get_securitization_escenario_and_date(self):
         result = SecuritizationUtils.get_securitization_escenario_and_date(self.limits_processed_df)

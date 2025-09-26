@@ -66,6 +66,7 @@ class DataprocExperiment:
                         f"{sandbox_path}mrr/joystick_mrr", "clan_date", portfolio_date)):
                     cubo_df = (
                         dataproc.read()
+                        .option("basePath", f"{sandbox_path}mrr/joystick_mrr")
                         .parquet(f"{sandbox_path}mrr/joystick_mrr/clan_date={portfolio_date}")
                     )
                     SecuritizationProcess(

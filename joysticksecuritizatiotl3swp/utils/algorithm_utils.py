@@ -17,7 +17,7 @@ class SecuritizationUtils:
 
         tipo = 'project_finance'
 
-        if (corporate_flag == 1):
+        if (corporate_flag == "1"):
             tipo = 'corporate_loan'
 
         return tipo
@@ -35,83 +35,27 @@ class SecuritizationUtils:
     @staticmethod
     def cast_facilities_df(cols_type, facilities_pandas_df):
         """
-        Cast pandas df to types for building spark df.
-        """
-        # listado de: columna - tipo de dato
+        Cast columns of a pandas DataFrame to specified data types for building a Spark DataFrame.
 
-        # en formato diccionario
-
-        for r in facilities_pandas_df.columns:
-            if cols_type[r] == 'string':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('str')
-            elif cols_type[r] == 'date':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('datetime64[ns]')
-            elif cols_type[r] == 'boolean':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('bool')
-            elif cols_type[r] == 'int':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('int')
-            elif cols_type[r] == 'double':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
-            elif 'decimal' in cols_type[r]:
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
-            elif cols_type[r] == 'float':
-                facilities_pandas_df[r] = facilities_pandas_df[r].astype('float')
-        return facilities_pandas_df
-
-    @staticmethod
-    def get_facilities_dtype(cols_type):
+        Args:
+        :param cols_type: Dictionary mapping column names to their target data types.
+        :param facilities_pandas_df: Input pandas DataFrame to be cast.
+        :return: pandas DataFrame with columns cast to specified types.
         """
-        Get the data types for the facilities DataFrame based on the provided column types.
-        """
-        extra_types = {
-            'limit_group': 'float',
-            'max_portfolio_size_group': 'float',
-            'consumido_group': 'float',
-            'importe_consumido_group': 'float',
-            'limit_sts_group': 'float',
-            'max_portfolio_size_sts_group': 'float',
-            'consumido_sts_group': 'float',
-            'importe_consumido_sts_group': 'float',
-            'limit_customer_subsector': 'float',
-            'max_portfolio_size_customer_subsector': 'float',
-            'consumido_customer_subsector': 'float',
-            'importe_consumido_customer_subsector': 'float',
-            'limit_non_ig': 'float',
-            'max_portfolio_size_non_ig': 'float',
-            'consumido_non_ig': 'float',
-            'importe_consumido_non_ig': 'float',
-            'limit_divisa': 'float',
-            'max_portfolio_size_divisa': 'float',
-            'consumido_divisa': 'float',
-            'importe_consumido_divisa': 'float',
-            'limit_no_esg_linked': 'float',
-            'max_portfolio_size_no_esg_linked': 'float',
-            'consumido_no_esg_linked': 'float',
-            'importe_consumido_no_esg_linked': 'float',
-            'limit_customer_sector': 'float',
-            'max_portfolio_size_customer_sector': 'float',
-            'consumido_customer_sector': 'float',
-            'importe_consumido_customer_sector': 'float',
-            'limit_customer_country': 'float',
-            'max_portfolio_size_customer_country': 'float',
-            'consumido_customer_country': 'float',
-            'importe_consumido_customer_country': 'float',
-            'limit_financial_product': 'float',
-            'max_portfolio_size_financial_product': 'float',
-            'consumido_financial_product': 'float',
-            'importe_consumido_financial_product': 'float',
-            'selected': 'int',
-            'limit_portfolio': 'float',
-            'porcentaje_portfolio_size': 'float',
-            'importe_optimo': 'float',
-            'ranking_candidata': 'int',
-            'ranking_selected': 'int',
-            'importe_optimo_acumulado': 'float',
-            'porcentaje_portfolio_size_acumulado': 'float',
-            'porcentaje_optimo': 'float',
-            'limit_portfolio_size': 'float',
-            'clan_date': 'date'
+        type_mapping = {
+            'string': 'str',
+            'date': 'datetime64[ns]',
+            'boolean': 'bool',
+            'int': 'int',
+            'double': 'float'
         }
-        result = cols_type.copy()
-        result.update(extra_types)
-        return result
+
+        for column in facilities_pandas_df.columns:
+            target_type = cols_type.get(column)
+            if target_type in type_mapping:
+                facilities_pandas_df[column] = facilities_pandas_df[column].astype(
+                    type_mapping[target_type])
+            elif 'decimal' in target_type:
+                facilities_pandas_df[column] = facilities_pandas_df[column].astype(
+                    'float')
+        return facilities_pandas_df
