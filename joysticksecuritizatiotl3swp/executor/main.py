@@ -770,7 +770,7 @@ class SecuritizationProcess:  # pragma: no cover
         )
         ops_clan = ops_clan.join(
             entities,
-            on="entity_id",
+            on="gf_entity_id",
             how="left",
         )
         cubo_aud = (
