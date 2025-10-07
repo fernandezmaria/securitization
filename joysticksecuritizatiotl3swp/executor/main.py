@@ -99,6 +99,7 @@ class SecuritizationProcess:  # pragma: no cover
         else:
             self.data_date = parameters["DATA_DATE"]
             self.logger.info("DATA_DATE set to " + self.data_date)
+        self.date_date_formatted = DateUtils.format_date(self.data_date, "%Y%m%d", "%Y-%m-%d")
 
         # Load postgres class
         if parameters["OUTPUT_MODE"] == "PRODUCTION":
@@ -977,27 +978,27 @@ class SecuritizationProcess:  # pragma: no cover
 
         # ADJUSTING partition in dataframe outputs
         df_securizations_for_algorithm = df_securizations_for_algorithm.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         limites_total = limites_total.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         df_constantes = df_constantes.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         facilities_excluded_df = facilities_excluded_df.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         optimized_securizations_df = optimized_securizations_df.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         final_limit_dictionary_df = final_limit_dictionary_df.withColumn(
-            "closing_date", F.lit(self.data_date)
+            "closing_date", F.lit(self.date_date_formatted)
         )
 
         self.dslb_writer.write_df_to_sb(

@@ -450,8 +450,7 @@ class PortfolioOptimizer:
         df['selected'] = 0  # si se incluye en la cartera
         # limite más restrictivo a nivel portfolio
         df['limit_portfolio'] = 1.0000000
-        df[
-            'porcentaje_portfolio_size'] = 0.0000000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
+        df['porcentaje_portfolio_size'] = 0.0000000  # % del importe del portfolio_size consumido por la facility (peso de la facility en la cartera)
         # importe que se incluye de la facility
         df['importe_optimo'] = 0.0000000
         df['ranking_candidata'] = 0  # orden de prioridad en el modelo

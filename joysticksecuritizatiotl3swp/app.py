@@ -56,6 +56,8 @@ class DataprocExperiment:
                         .option("basePath", f"{sandbox_path}mrr/joystick_mrr")
                         .parquet(f"{sandbox_path}mrr/joystick_mrr/clan_date={clan_date}")
                     )
+                    if "gf_facility_id" in cubo_df.columns:
+                        cubo_df = Utilities.transform_mrr_columns(cubo_df)
                     SecuritizationProcess(
                         self.logger, spark, dataproc, parameters
                     ).execute_algorithm(cubo_df)
