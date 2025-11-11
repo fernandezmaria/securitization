@@ -13,6 +13,8 @@ from rubik.utils.partitions import PartitionsUtils
 from grubik.services.operations.facilities import Facilities
 from alfred.general.date_utils import DateUtils
 
+from joysticksecuritizatiotl3swp.utils.utilities import Utilities
+
 from joysticksecuritizatiotl3swp.configurations.catalogues import (
     get_countries_iso_name_table,
 )
@@ -99,7 +101,7 @@ class SecuritizationProcess:  # pragma: no cover
         else:
             self.data_date = parameters["DATA_DATE"]
             self.logger.info("DATA_DATE set to " + self.data_date)
-        self.date_date_formatted = DateUtils.format_date(self.data_date, "%Y%m%d", "%Y-%m-%d")
+        self.data_date_formatted = DateUtils.format_date(self.data_date, "%Y%m%d", "%Y-%m-%d")
 
         # Load postgres class
         if parameters["OUTPUT_MODE"] == "PRODUCTION":
@@ -928,6 +930,8 @@ class SecuritizationProcess:  # pragma: no cover
 
         if self.parameters["STAGE"] == "ALGORITHM":
             self.logger.info("Executing algorithm")
+            if "delta_file_id" in cubo_aud.columns:
+                cubo_aud = Utilities.transform_mrr_columns(cubo_aud)
             self.execute_algorithm(cubo_aud)
         else:
             return 0
@@ -978,27 +982,27 @@ class SecuritizationProcess:  # pragma: no cover
 
         # ADJUSTING partition in dataframe outputs
         df_securizations_for_algorithm = df_securizations_for_algorithm.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         limites_total = limites_total.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         df_constantes = df_constantes.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         facilities_excluded_df = facilities_excluded_df.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         optimized_securizations_df = optimized_securizations_df.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         final_limit_dictionary_df = final_limit_dictionary_df.withColumn(
-            "closing_date", F.lit(self.date_date_formatted)
+            "closing_date", F.lit(self.data_date_formatted)
         )
 
         self.dslb_writer.write_df_to_sb(

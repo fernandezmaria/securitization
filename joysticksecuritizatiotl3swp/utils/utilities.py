@@ -78,25 +78,25 @@ class Utilities:
         Transform MRR columns to match original names.
         """
         transformations = {
-            'gf_facility_id': 'delta_file_id',
-            'gf_fclty_trc_id': 'delta_file_band_id',
-            'gf_branch_id': 'branch_id',
-            'gf_project_id': 'project_id',
-            'gf_fclty_trc_proj_sector_desc': 'project_sector_desc',
-            'gf_fclty_trc_tran_purp_desc': 'deal_purpose_type',
-            'gf_fclty_trc_srty_type_name': 'seniority_name',
-            'gf_insured_contract_type_name': 'insured_type',
-            'g_currency_id': 'currency_id',
-            'gf_expiration_date': 'expiration_date',
-            'gf_deal_signing_date': 'deal_signing_date',
-            'gf_syndicated_fctrc_type_name': 'syndicated_type',
-            'gf_financial_product_desc': 'financial_product_desc',
-            'gf_fclty_trc_finpro_class_desc': 'financial_product_class_desc',
-            'gf_customer_id': 'customer_id',
-            'gf_bbva_funded_amount': 'bbva_drawn_amount',
-            'gf_bbva_avail_amount': 'bbva_available_amount',
-            'gf_bbva_funded_eur_amount': 'bbva_drawn_eur_amount',
-            'gf_bbva_avail_eur_amount': 'bbva_available_eur_amount'
+            'delta_file_id': 'gf_facility_id',
+            'delta_file_band_id': 'gf_fclty_trc_id',
+            'branch_id': 'gf_branch_id',
+            'project_id': 'gf_project_id',
+            'project_sector_desc': 'gf_fclty_trc_proj_sector_desc',
+            'deal_purpose_type': 'gf_fclty_trc_tran_purp_desc',
+            'seniority_name': 'gf_fclty_trc_srty_type_name',
+            'insured_type': 'gf_insured_contract_type_name',
+            'currency_id': 'g_currency_id',
+            'expiration_date': 'gf_expiration_date',
+            'deal_signing_date': 'gf_deal_signing_date',
+            'syndicated_type': 'gf_syndicated_fctrc_type_name',
+            'financial_product_desc': 'gf_financial_product_desc',
+            'financial_product_class_desc': 'gf_fclty_trc_finpro_class_desc',
+            'customer_id': 'gf_customer_id',
+            'bbva_drawn_amount': 'gf_bbva_funded_amount',
+            'bbva_available_amount': 'gf_bbva_avail_amount',
+            'bbva_drawn_eur_amount': 'gf_bbva_funded_eur_amount',
+            'bbva_available_eur_amount': 'gf_bbva_avail_eur_amount'
         }
 
         for col_nueva, col_original in transformations.items():

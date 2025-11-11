@@ -56,17 +56,17 @@ class SecurizationsTransform:
         """
         securizations_for_algorithm_df = (
             securizations_df.withColumn(
-                'project_sector_desc',
-                F.trim('project_sector_desc')
+                'gf_fclty_trc_proj_sector_desc',
+                F.trim('gf_fclty_trc_proj_sector_desc')
             )
-            .join(self.catalogue_sector_project_df, ['project_sector_desc'], 'left')
+            .join(self.catalogue_sector_project_df, ['gf_fclty_trc_proj_sector_desc'], 'left')
             .fillna('No Informado')
         )
 
         securizations_for_algorithm_df = (
             securizations_for_algorithm_df.withColumn(
                 'ico_flag',
-                F.when(F.trim(F.col('deal_purpose_type')) == "ICO España", 1)
+                F.when(F.trim(F.col('gf_fclty_trc_tran_purp_desc')) == "ICO España", 1)
                 .otherwise(0)
             )
         )

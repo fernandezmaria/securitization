@@ -34,6 +34,7 @@ class CatalogueSectorProjectLoader:
             .filter(F.col(self.sector_project_catalogue_date_field) == last_date_available)
             .withColumn('project_sector_desc', F.trim('project_sector_desc'))
         )
+        catalogue_sector_project_df = catalogue_sector_project_df.withColumnRenamed('project_sector_desc', 'gf_fclty_trc_proj_sector_desc')
 
         self.logger.info(f"Read sector project relation for last available date {last_date_available}")
 

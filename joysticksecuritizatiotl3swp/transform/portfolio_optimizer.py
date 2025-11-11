@@ -181,8 +181,8 @@ class PortfolioOptimizer:
         facilities_f0 = (
             facilities_t1.withColumn(
                 'importe1',
-                F.col('bbva_drawn_eur_amount') +
-                (F.col('bbva_available_eur_amount') * F.col('limit_ccf'))
+                F.col('gf_bbva_funded_eur_amount') +
+                (F.col('gf_bbva_avail_eur_amount') * F.col('limit_ccf'))
             )
             .withColumn(
                 'importe2',
@@ -204,6 +204,9 @@ class PortfolioOptimizer:
         facilities_add = facilities_f0.withColumn('limits_applied', F.lit(''))
 
         varios_campos = 0
+        dict_lim_ind['excluded_facilities'] = 'gf_facility_id'
+        dict_lim_ind['bei'] = 'gf_facility_id'
+        dict_lim_ind['maturity_min'] = 'gf_expiration_date'
 
         for k, v in dict_lim_ind.items():
             if ('/' in v):  # limite con varios campos viene con este separador en el catálogo de campos
@@ -481,6 +484,8 @@ class PortfolioOptimizer:
         consumed_limits_dict = {}  # inicializamos diccionario de consumos
         limit_keys = list(dict_lim_values.keys())  # % marcados en launchad
         keys_fechas = ['maturity_min', 'maturity_max']
+        dict_lim_port['divisa'] = 'g_currency_id'
+        dict_lim_port['financial_product'] = 'gf_financial_product_desc'
 
         for k, v in dict_lim_port.items():
             if (k not in keys_fechas):  # caso base: limite-categoria=valor
@@ -571,11 +576,11 @@ class PortfolioOptimizer:
             facilities_disponibles.withColumn(
                 'pk_engine',
                 F.concat(
-                    facilities_disponibles.delta_file_id,
+                    facilities_disponibles.gf_facility_id,
                     F.lit('_'),
-                    facilities_disponibles.delta_file_band_id,
+                    facilities_disponibles.gf_fclty_trc_id,
                     F.lit('_'),
-                    facilities_disponibles.branch_id)
+                    facilities_disponibles.gf_branch_id)
             )
         )
 

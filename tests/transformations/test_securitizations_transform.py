@@ -23,7 +23,7 @@ class TestSecuritizationsTransform(unittest.TestCase):
         ]
 
         # Define schema
-        schema = "project_sector_desc STRING, project_subsector_desc STRING, closing_date STRING"
+        schema = "gf_fclty_trc_proj_sector_desc STRING, project_subsector_desc STRING, closing_date STRING"
         df_project_sector_desc = self.spark.createDataFrame(data, schema=schema)
 
         # Patch the read_catalogue_sector_project_relation method
@@ -72,7 +72,7 @@ class TestSecuritizationsTransform(unittest.TestCase):
             ("a","BB+1",3.0,"sector1", "ICO España", "BB+1", 0.5, "S", "true", "true", 1, 1000),
             ("b","AA",2.0,"sector2", "Other", "BBB", 0.7, "N", "false", "false", 0, 0)
         ]
-        schema_securizations = "watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING, ma_expanded_master_scale_number DOUBLE, project_sector_desc STRING, deal_purpose_type STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE, gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT, bei_guaranteed_amount INT"
+        schema_securizations = "watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING, ma_expanded_master_scale_number DOUBLE, gf_fclty_trc_proj_sector_desc STRING, gf_fclty_trc_tran_purp_desc STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE, gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT, bei_guaranteed_amount INT"
         df_securizations = self.spark.createDataFrame(data_securizations, schema=schema_securizations)
 
         # Call the build_securization_for_algorithm method
@@ -87,8 +87,8 @@ class TestSecuritizationsTransform(unittest.TestCase):
         ]
 
         expected_schema = """
-            project_sector_desc STRING, watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING,
-            ma_expanded_master_scale_number DOUBLE, deal_purpose_type STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE,
+            gf_fclty_trc_proj_sector_desc STRING, watch_list_clasification_type STRING, gf_ma_expanded_master_scale_id STRING,
+            ma_expanded_master_scale_number DOUBLE, gf_fclty_trc_tran_purp_desc STRING, rating STRING, adj_lgd_ma_mitig_per DOUBLE,
             gf_pf_project_const_type STRING, sts_payment_condition STRING, sts_sm_rw_condition STRING, esg_linked INT,
             bei_guaranteed_amount INT, project_subsector_desc STRING, closing_date STRING, ico_flag INT, non_ig_flag INT,
             building_project_flag INT, workout_flag INT, sts_payment_flag INT, sts_sm_rw_flag INT, esg_linked_flag INT,
